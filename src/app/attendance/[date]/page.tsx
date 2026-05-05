@@ -80,7 +80,7 @@ export default async function AttendanceDetailPage({
   return (
     <div className="min-h-screen bg-muted">
       <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <div className="flex items-center gap-6">
             <div>
               <p className="text-sm text-muted-foreground">勤怠管理システム</p>
