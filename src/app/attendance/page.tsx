@@ -18,6 +18,7 @@ import {
   totalWorkMinutes,
   type DailySummary,
 } from '@/lib/mock/attendance-summary';
+import { getDailyNotesMap } from '@/lib/mock/daily-notes';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: '管理者',
@@ -61,8 +62,16 @@ export default async function AttendancePage({
     params.ym && isValidYm(params.ym) ? params.ym : currentYearMonthJst();
 
   const summaries = summarizeMonth(session.id, ym);
+  const notesMap = getDailyNotesMap(
+    session.id,
+    summaries.map((s) => s.jstDateKey),
+  );
   const totalMin = totalWorkMinutes(summaries);
+  const totalBreakMin = summaries.reduce((sum, s) => sum + s.breakMinutes, 0);
   const workedDays = summaries.filter((s) => s.workMinutes != null).length;
+  const missingClockOutDays = summaries.filter(
+    (s) => s.clockIn && !s.clockOut,
+  ).length;
 
   const prevYm = shiftYearMonth(ym, -1);
   const nextYm = shiftYearMonth(ym, 1);
@@ -139,11 +148,13 @@ export default async function AttendancePage({
                     <th className="px-3 py-2 font-medium">退勤</th>
                     <th className="px-3 py-2 font-medium">休憩</th>
                     <th className="px-3 py-2 font-medium">勤務時間</th>
+                    <th className="px-3 py-2 font-medium">業務内容</th>
                   </tr>
                 </thead>
                 <tbody>
                   {summaries.map((s) => {
                     const empty = !s.clockIn && !s.clockOut;
+                    const note = notesMap.get(s.jstDateKey);
                     return (
                       <tr
                         key={s.jstDateKey}
@@ -151,7 +162,14 @@ export default async function AttendancePage({
                           empty ? 'text-muted-foreground' : ''
                         }`}
                       >
-                        <td className="px-3 py-2 font-mono">{s.jstDateKey}</td>
+                        <td className="px-3 py-2 font-mono">
+                          <Link
+                            href={`/attendance/${s.jstDateKey}?ym=${ym}`}
+                            className="text-primary underline-offset-4 hover:underline"
+                          >
+                            {s.jstDateKey}
+                          </Link>
+                        </td>
                         <td className={`px-3 py-2 ${dayClass(s)}`}>
                           {WEEKDAY_LABEL[s.weekday]}
                         </td>
@@ -169,10 +187,42 @@ export default async function AttendancePage({
                         <td className="px-3 py-2 font-mono">
                           {fmtMinutes(s.workMinutes)}
                         </td>
+                        <td
+                          className="max-w-[260px] truncate px-3 py-2"
+                          title={note ?? ''}
+                        >
+                          {note ? (
+                            note
+                          ) : (
+                            <span className="text-muted-foreground">未入力</span>
+                          )}
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
+                <tfoot className="bg-muted/60 font-medium">
+                  <tr className="border-t-2">
+                    <td className="px-3 py-3" colSpan={2}>
+                      合計
+                      {missingClockOutDays > 0 && (
+                        <span className="ml-2 text-xs font-normal text-rose-600">
+                          （退勤打刻なし {missingClockOutDays} 日）
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={2}>
+                      勤務 {workedDays} 日
+                    </td>
+                    <td className="px-3 py-3 font-mono">
+                      {fmtMinutes(totalBreakMin)}
+                    </td>
+                    <td className="px-3 py-3 font-mono text-base">
+                      {fmtMinutes(totalMin)}
+                    </td>
+                    <td className="px-3 py-3"></td>
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </CardContent>
