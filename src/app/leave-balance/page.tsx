@@ -1,0 +1,229 @@
+import { formatInTimeZone } from 'date-fns-tz';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import { Button } from '@/components/ui/button';
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { JST_TIMEZONE } from '@/lib/calc/constants';
+import { signOutAction } from '@/app/login/actions';
+import { getUserLeaveBalance } from '@/lib/mock/leave-grants';
+import { getMockSession } from '@/lib/mock/session';
+
+const ROLE_LABEL: Record<string, string> = {
+  admin: '管理者',
+  approver: '承認者',
+  general: '一般',
+};
+
+const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
+
+const daysUntil = (target: Date, asOf: Date): number =>
+  Math.ceil((target.getTime() - asOf.getTime()) / (1000 * 60 * 60 * 24));
+
+export default async function LeaveBalancePage() {
+  const session = await getMockSession();
+  if (!session) redirect('/login');
+
+  const asOf = new Date();
+  const balance = getUserLeaveBalance(session.id, asOf);
+  if (!balance) redirect('/login');
+
+  const tenureMonths = Math.floor(
+    (asOf.getTime() - balance.hiredAt.getTime()) / (1000 * 60 * 60 * 24 * 30.44),
+  );
+  const tenureYears = Math.floor(tenureMonths / 12);
+  const tenureRemMonths = tenureMonths % 12;
+
+  return (
+    <div className="min-h-screen bg-muted">
+      <header className="border-b bg-background">
+        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-sm text-muted-foreground">勤怠管理システム</p>
+              <p className="text-base font-semibold">
+                {session.name}{' '}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {ROLE_LABEL[session.role]}
+                </span>
+              </p>
+            </div>
+            <nav className="flex gap-2 text-sm">
+              <Link
+                href="/clock"
+                className="rounded-md px-3 py-1.5 hover:bg-muted"
+              >
+                打刻
+              </Link>
+              <Link
+                href="/attendance"
+                className="rounded-md px-3 py-1.5 hover:bg-muted"
+              >
+                勤怠
+              </Link>
+              <Link
+                href="/applications"
+                className="rounded-md px-3 py-1.5 hover:bg-muted"
+              >
+                申請
+              </Link>
+              <Link
+                href="/leave-balance"
+                className="rounded-md bg-muted px-3 py-1.5 font-medium"
+              >
+                有給
+              </Link>
+            </nav>
+          </div>
+          <form action={signOutAction}>
+            <Button type="submit" variant="outline" size="sm">
+              サインアウト
+            </Button>
+          </form>
+        </div>
+      </header>
+
+      <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <Card>
+            <CardHeader className="pb-2">
+              <p className="text-xs text-muted-foreground">現在の残日数</p>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-semibold">
+                {balance.summary.totalRemaining}
+                <span className="ml-1 text-base font-normal text-muted-foreground">
+                  日
+                </span>
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <p className="text-xs text-muted-foreground">90日以内に失効</p>
+            </CardHeader>
+            <CardContent>
+              <p
+                className={`text-3xl font-semibold ${balance.summary.expiringSoonDays > 0 ? 'text-amber-700' : ''}`}
+              >
+                {balance.summary.expiringSoonDays}
+                <span className="ml-1 text-base font-normal text-muted-foreground">
+                  日
+                </span>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {fmtDate(balance.summary.expiringSoonThreshold)} まで
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <p className="text-xs text-muted-foreground">次回付与予定</p>
+            </CardHeader>
+            <CardContent>
+              {balance.nextGrant ? (
+                <>
+                  <p className="text-base font-semibold font-mono">
+                    {fmtDate(balance.nextGrant.grantedAt)}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {balance.nextGrant.grantedDays} 日付与（あと
+                    {daysUntil(balance.nextGrant.grantedAt, asOf)}日）
+                  </p>
+                </>
+              ) : (
+                <p className="text-muted-foreground">-</p>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">付与履歴</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              入社日: {fmtDate(balance.hiredAt)} ・ 勤続 {tenureYears}年
+              {tenureRemMonths}ヶ月 ・ 承認済申請による消化{' '}
+              {balance.totalApprovedDays} 日（FIFOで古い付与から消化）
+            </p>
+          </CardHeader>
+          <CardContent>
+            {balance.grants.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                まだ付与されていません
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b text-left text-muted-foreground">
+                      <th className="px-3 py-2 font-medium">付与日</th>
+                      <th className="px-3 py-2 font-medium">付与日数</th>
+                      <th className="px-3 py-2 font-medium">消化</th>
+                      <th className="px-3 py-2 font-medium">残</th>
+                      <th className="px-3 py-2 font-medium">有効期限</th>
+                      <th className="px-3 py-2 font-medium">状態</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {balance.grants.map((g, i) => {
+                      const daysToExpire = daysUntil(g.expiresAt, asOf);
+                      const expiringSoon =
+                        !g.expired && daysToExpire <= 90;
+                      const stateLabel = g.expired
+                        ? '失効'
+                        : expiringSoon
+                        ? '失効間近'
+                        : '有効';
+                      const stateClass = g.expired
+                        ? 'bg-zinc-200 text-zinc-700'
+                        : expiringSoon
+                        ? 'bg-amber-100 text-amber-900'
+                        : 'bg-emerald-100 text-emerald-900';
+                      return (
+                        <tr
+                          key={i}
+                          className={`border-b last:border-b-0 ${g.expired ? 'text-muted-foreground' : ''}`}
+                        >
+                          <td className="px-3 py-2 font-mono">
+                            {fmtDate(g.grantedAt)}
+                          </td>
+                          <td className="px-3 py-2 font-mono">
+                            {g.grantedDays}
+                          </td>
+                          <td className="px-3 py-2 font-mono">{g.usedDays}</td>
+                          <td className="px-3 py-2 font-mono font-semibold">
+                            {g.remainingDays}
+                          </td>
+                          <td className="px-3 py-2 font-mono">
+                            {fmtDate(g.expiresAt)}
+                            {!g.expired && (
+                              <span className="ml-2 text-xs text-muted-foreground">
+                                （あと{daysToExpire}日）
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2">
+                            <span
+                              className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${stateClass}`}
+                            >
+                              {stateLabel}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

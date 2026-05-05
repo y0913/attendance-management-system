@@ -110,6 +110,12 @@ export default async function AttendanceDetailPage({
               >
                 申請
               </Link>
+              <Link
+                href="/leave-balance"
+                className="rounded-md px-3 py-1.5 hover:bg-muted"
+              >
+                有給
+              </Link>
             </nav>
           </div>
           <form action={signOutAction}>

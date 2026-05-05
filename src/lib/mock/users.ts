@@ -6,6 +6,7 @@ export interface MockUser {
   name: string;
   role: Role;
   managerId: string | null;
+  hiredAt: Date;
 }
 
 export const MOCK_USERS: MockUser[] = [
@@ -15,6 +16,7 @@ export const MOCK_USERS: MockUser[] = [
     name: '管理 太郎',
     role: 'admin',
     managerId: null,
+    hiredAt: new Date('2018-04-01T00:00:00+09:00'),
   },
   {
     id: 'u_approver',
@@ -22,6 +24,7 @@ export const MOCK_USERS: MockUser[] = [
     name: '承認 花子',
     role: 'approver',
     managerId: 'u_admin',
+    hiredAt: new Date('2021-04-01T00:00:00+09:00'),
   },
   {
     id: 'u_general',
@@ -29,6 +32,7 @@ export const MOCK_USERS: MockUser[] = [
     name: '一般 次郎',
     role: 'general',
     managerId: 'u_approver',
+    hiredAt: new Date('2023-10-01T00:00:00+09:00'),
   },
 ];
 
