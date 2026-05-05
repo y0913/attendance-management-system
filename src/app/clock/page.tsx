@@ -1,4 +1,5 @@
 import { formatInTimeZone } from 'date-fns-tz';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
   Card,
@@ -54,14 +55,30 @@ export default async function ClockPage() {
     <div className="min-h-screen bg-muted">
       <header className="border-b bg-background">
         <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
-          <div>
-            <p className="text-sm text-muted-foreground">勤怠管理システム</p>
-            <p className="text-base font-semibold">
-              {session.name}{' '}
-              <span className="ml-2 text-xs text-muted-foreground">
-                {ROLE_LABEL[session.role]}
-              </span>
-            </p>
+          <div className="flex items-center gap-6">
+            <div>
+              <p className="text-sm text-muted-foreground">勤怠管理システム</p>
+              <p className="text-base font-semibold">
+                {session.name}{' '}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  {ROLE_LABEL[session.role]}
+                </span>
+              </p>
+            </div>
+            <nav className="flex gap-2 text-sm">
+              <Link
+                href="/clock"
+                className="rounded-md bg-muted px-3 py-1.5 font-medium"
+              >
+                打刻
+              </Link>
+              <Link
+                href="/attendance"
+                className="rounded-md px-3 py-1.5 hover:bg-muted"
+              >
+                勤怠
+              </Link>
+            </nav>
           </div>
           <form action={signOutAction}>
             <Button type="submit" variant="outline" size="sm">
