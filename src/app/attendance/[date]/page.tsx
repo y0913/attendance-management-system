@@ -11,11 +11,19 @@ import {
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { signOutAction } from '@/app/login/actions';
 import {
+  captureCurrentSnapshot,
+  findActiveCorrection,
+  REASON_MAX_LENGTH,
+  STATUS_BADGE_CLASS,
+  STATUS_LABEL,
+} from '@/lib/mock/clock-corrections';
+import {
   DAILY_NOTE_MAX_LENGTH,
   getDailyNote,
 } from '@/lib/mock/daily-notes';
 import { getMockSession } from '@/lib/mock/session';
 import { listClocksForDate } from '@/lib/mock/time-clocks';
+import { CorrectionForm } from './correction-form';
 import { NoteForm } from './note-form';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -66,6 +74,8 @@ export default async function AttendanceDetailPage({
   const dayDate = new Date(`${jstDate}T00:00:00+09:00`);
   const clocks = listClocksForDate(session.id, dayDate);
   const note = getDailyNote(session.id, jstDate);
+  const activeCorrection = findActiveCorrection(session.id, jstDate);
+  const currentSnapshot = captureCurrentSnapshot(session.id, jstDate);
 
   return (
     <div className="min-h-screen bg-muted">
@@ -93,6 +103,12 @@ export default async function AttendanceDetailPage({
                 className="rounded-md bg-muted px-3 py-1.5 font-medium"
               >
                 勤怠
+              </Link>
+              <Link
+                href="/applications"
+                className="rounded-md px-3 py-1.5 hover:bg-muted"
+              >
+                申請
               </Link>
             </nav>
           </div>
@@ -138,6 +154,55 @@ export default async function AttendanceDetailPage({
                   </li>
                 ))}
               </ul>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">打刻修正申請</CardTitle>
+            <p className="text-xs text-muted-foreground">
+              打刻の修正は申請 → 上長承認のフローが必須です
+            </p>
+          </CardHeader>
+          <CardContent>
+            {activeCorrection ? (
+              <div className="flex flex-col gap-2 rounded-md border bg-muted/40 p-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_BADGE_CLASS[activeCorrection.status]}`}
+                  >
+                    {STATUS_LABEL[activeCorrection.status]}
+                  </span>
+                  <span className="text-muted-foreground">
+                    {formatInTimeZone(
+                      activeCorrection.submittedAt,
+                      JST_TIMEZONE,
+                      'yyyy-MM-dd HH:mm',
+                    )}{' '}
+                    に申請
+                  </span>
+                </div>
+                <p className="text-muted-foreground">
+                  この日付には審査中の申請があります。承認または却下されるまで再申請できません。
+                </p>
+                <div className="grid grid-cols-2 gap-x-6 gap-y-1 font-mono text-xs">
+                  <span>出勤: {activeCorrection.afterPayload.clockIn ?? '-'}</span>
+                  <span>退勤: {activeCorrection.afterPayload.clockOut ?? '-'}</span>
+                  <span>
+                    休憩開始: {activeCorrection.afterPayload.breakStart ?? '-'}
+                  </span>
+                  <span>
+                    休憩終了: {activeCorrection.afterPayload.breakEnd ?? '-'}
+                  </span>
+                </div>
+              </div>
+            ) : (
+              <CorrectionForm
+                jstDate={jstDate}
+                current={currentSnapshot}
+                reasonMaxLength={REASON_MAX_LENGTH}
+              />
             )}
           </CardContent>
         </Card>

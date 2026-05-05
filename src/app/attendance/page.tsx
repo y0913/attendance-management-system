@@ -103,6 +103,12 @@ export default async function AttendancePage({
               >
                 勤怠
               </Link>
+              <Link
+                href="/applications"
+                className="rounded-md px-3 py-1.5 hover:bg-muted"
+              >
+                申請
+              </Link>
             </nav>
           </div>
           <form action={signOutAction}>
