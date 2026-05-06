@@ -21,9 +21,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
               pass: process.env.EMAIL_SERVER_PASSWORD,
             }
           : undefined,
-        // mailpit は TLS 不要
-        secure: false,
-        ignoreTLS: true,
+        // dev (mailpit) は平文 SMTP、本番 (Resend 等) は STARTTLS。
+        // EMAIL_INSECURE=true で平文許可。
+        secure: process.env.EMAIL_INSECURE === 'true' ? false : undefined,
+        ignoreTLS: process.env.EMAIL_INSECURE === 'true' ? true : undefined,
       },
       from: process.env.EMAIL_FROM,
     }),
