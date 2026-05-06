@@ -65,6 +65,16 @@ export default async function AttendanceDetailPage({
   const backYm = ym && isValidYm(ym) ? ym : jstDate.slice(0, 7);
   const backHref = `/attendance?ym=${backYm}`;
 
+  const shiftDate = (jstDate: string, delta: number): string => {
+    const base = new Date(`${jstDate}T00:00:00+09:00`);
+    base.setUTCDate(base.getUTCDate() + delta);
+    return formatInTimeZone(base, JST_TIMEZONE, 'yyyy-MM-dd');
+  };
+  const prevDate = shiftDate(jstDate, -1);
+  const nextDate = shiftDate(jstDate, 1);
+  const prevHref = `/attendance/${prevDate}?ym=${prevDate.slice(0, 7)}`;
+  const nextHref = `/attendance/${nextDate}?ym=${nextDate.slice(0, 7)}`;
+
   const dayDate = new Date(`${jstDate}T00:00:00+09:00`);
   const clocks = listClocksForDate(session.id, dayDate);
   const note = getDailyNote(session.id, jstDate);
@@ -83,12 +93,27 @@ export default async function AttendanceDetailPage({
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-semibold">{fmtDateHeading(jstDate)}</h1>
-          <Link
-            href={backHref}
-            className="text-sm text-muted-foreground hover:underline"
-          >
-            ← 一覧に戻る
-          </Link>
+          <div className="flex items-center gap-3 text-sm">
+            <Link
+              href={prevHref}
+              className="text-muted-foreground hover:underline"
+            >
+              ← 前日
+            </Link>
+            <Link
+              href={nextHref}
+              className="text-muted-foreground hover:underline"
+            >
+              翌日 →
+            </Link>
+            <span className="text-muted-foreground">|</span>
+            <Link
+              href={backHref}
+              className="text-muted-foreground hover:underline"
+            >
+              一覧に戻る
+            </Link>
+          </div>
         </div>
 
         <Card>

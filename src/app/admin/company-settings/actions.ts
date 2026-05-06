@@ -8,17 +8,30 @@ import { getCompany, updateCompany } from '@/lib/mock/companies';
 import { getMockSession } from '@/lib/mock/session';
 
 const StrategyEnum = z.enum(['daily', 'month_end']);
+const WeekdayEnum = z.union([
+  z.literal(0),
+  z.literal(1),
+  z.literal(2),
+  z.literal(3),
+  z.literal(4),
+  z.literal(5),
+  z.literal(6),
+]);
 
 const UpdateSchema = z.object({
   name: z.string().min(1).max(100),
   closingDay: z.number().int().min(0).max(31),
   midMonthRateChangeStrategy: StrategyEnum,
+  monthlyStandardHours: z.number().min(1).max(744), // 1h 〜 31日×24h
+  legalHolidayWeekday: WeekdayEnum,
 });
 
 export async function updateCompanySettingsAction(input: {
   name: string;
   closingDay: number;
   midMonthRateChangeStrategy: 'daily' | 'month_end';
+  monthlyStandardHours: number;
+  legalHolidayWeekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
 }): Promise<ActionResult<void>> {
   const session = await getMockSession();
   if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
@@ -39,6 +52,8 @@ export async function updateCompanySettingsAction(input: {
     name: parsed.data.name.trim(),
     closingDay: parsed.data.closingDay,
     midMonthRateChangeStrategy: parsed.data.midMonthRateChangeStrategy,
+    monthlyStandardHours: parsed.data.monthlyStandardHours,
+    legalHolidayWeekday: parsed.data.legalHolidayWeekday,
   });
 
   recordAuditLog({

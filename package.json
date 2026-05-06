@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",
+    "@fontsource/noto-sans-jp": "^5.2.9",
     "@hookform/resolvers": "^5.2.2",
     "@prisma/client": "^7.8.0",
     "@react-pdf/renderer": "^4.5.1",

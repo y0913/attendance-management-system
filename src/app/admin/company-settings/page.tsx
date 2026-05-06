@@ -48,6 +48,8 @@ export default async function CompanySettingsPage() {
                 name: company.name,
                 closingDay: company.closingDay,
                 midMonthRateChangeStrategy: company.midMonthRateChangeStrategy,
+                monthlyStandardHours: company.monthlyStandardHours,
+                legalHolidayWeekday: company.legalHolidayWeekday,
               }}
             />
           </CardContent>

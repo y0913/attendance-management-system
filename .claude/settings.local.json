@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(/usr/bin/curl -s -o /dev/null -w \"%{http_code}\\\\n\" -b \"mock_user_id=u_approver\" \"http://localhost:3000/api/admin/reports/attendance-pdf/u_general?ym=2026-04\")",
+      "Bash(/usr/bin/curl -s -o /dev/null -w \"%{http_code}\\\\n\" -b \"mock_user_id=u_general\" \"http://localhost:3000/api/admin/reports/attendance-pdf/u_general?ym=2026-04\")",
+      "Bash(/usr/bin/curl -s -o /dev/null -w \"%{http_code} -> %{redirect_url}\\\\n\" \"http://localhost:3000/api/admin/reports/attendance-pdf/u_general?ym=2026-04\")",
+      "Bash(/usr/bin/curl -s -b \"mock_user_id=u_admin\" \"http://localhost:3000/admin/reports?ym=2026-04\")",
+      "Bash(/usr/bin/grep -oE '\\(/api/admin/reports/attendance-pdf|>PDF<\\)')",
+      "Bash(/usr/bin/sort -u)",
+      "Bash(/usr/bin/curl -s -o /dev/null -w \"%{http_code}\\\\n\" -b \"mock_user_id=u_admin\" \"http://localhost:3000/api/admin/reports/attendance-pdf/nonexistent?ym=2026-04\")"
+    ]
+  }
+}

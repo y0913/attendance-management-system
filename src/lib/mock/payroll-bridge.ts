@@ -1,12 +1,13 @@
 // mock store と Phase 1 の calc 層 (calcDailyAttendance / calcMonthlySummary /
 // calcPremiumPay) を接続するブリッジ。
 //
-// 注意:
-// - 法定休日フラグ (legalHolidayFlag) は mock では false 固定。日曜＝法定休日
-//   などの判定ロジックを company-level config と接続するのは別タスク。
-// - baseHourlyRate は月給→ `baseSalary / (22 × 8)` の概算、時給→ baseSalary そのまま。
-//   実務では月所定労働時間を会社設定に持つべき。
+// - baseHourlyRate: 月給は `baseSalary / company.monthlyStandardHours`、
+//   時給は baseSalary そのまま。
+// - isLegalHoliday: 日付の JST 曜日が company.legalHolidayWeekday と一致するなら true。
+//   ※ 祝日(holidays.ts)は法定休日とは別概念で、時間単価倍率は通常の所定外残業ルールで計算される。
 
+import { toZonedTime } from 'date-fns-tz';
+import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { calcDailyAttendance } from '@/lib/calc/daily-attendance';
 import { calcMonthlySummary } from '@/lib/calc/monthly-summary';
 import { calcPremiumPay } from '@/lib/calc/premium-pay';
@@ -26,8 +27,6 @@ import {
   type MockWorkRuleVersion,
 } from './work-rule-versions';
 
-const ASSUMED_MONTHLY_HOURS = 22 * 8; // 暫定: 月176時間想定
-
 const toCalcWorkRuleVersion = (v: MockWorkRuleVersion): WorkRuleVersion => ({
   validFrom: v.validFrom,
   dailyOtThresholdMin: v.dailyOtThresholdMin,
@@ -45,10 +44,12 @@ const toCalcWorkRuleVersion = (v: MockWorkRuleVersion): WorkRuleVersion => ({
 const computeBaseHourlyRate = (
   baseSalary: number | null,
   employmentType: 'monthly' | 'hourly',
+  monthlyStandardHours: number,
 ): number => {
   if (baseSalary == null) return 0;
   if (employmentType === 'hourly') return baseSalary;
-  return baseSalary / ASSUMED_MONTHLY_HOURS;
+  if (monthlyStandardHours <= 0) return 0;
+  return baseSalary / monthlyStandardHours;
 };
 
 export interface MonthlyPayrollResult {
@@ -92,12 +93,15 @@ export function computeMonthlyPayroll(
   const rule = toCalcWorkRuleVersion(currentRule);
   const allRules = listWorkRuleVersions().map(toCalcWorkRuleVersion);
 
+  const company = getCompany();
+
   const dailyAttendances: DailyAttendance[] = days.map((dayDate) => {
     const clocks = listClocksForDate(userId, dayDate);
-    return calcDailyAttendance(clocks, dayDate, rule, false);
+    const dow = toZonedTime(dayDate, JST_TIMEZONE).getDay();
+    const isLegalHoliday = dow === company.legalHolidayWeekday;
+    return calcDailyAttendance(clocks, dayDate, rule, isLegalHoliday);
   });
 
-  const company = getCompany();
   const summary = calcMonthlySummary(
     dailyAttendances,
     yearMonth,
@@ -108,6 +112,7 @@ export function computeMonthlyPayroll(
   const baseHourlyRate = computeBaseHourlyRate(
     user.baseSalary,
     user.employmentType,
+    company.monthlyStandardHours,
   );
   const premium = calcPremiumPay(summary, baseHourlyRate, rule);
 

@@ -131,9 +131,11 @@ export async function GET(request: NextRequest): Promise<Response> {
       '月途中ルール変更戦略',
       company.midMonthRateChangeStrategy === 'daily' ? '日次' : '月末',
     ],
+    ['月所定労働時間', `${company.monthlyStandardHours} h`],
     [
-      '注釈',
-      '時給単価は baseSalary / (22×8) の概算。法定休日フラグは未対応(現状 0)。',
+      '法定休日',
+      ['日', '月', '火', '水', '木', '金', '土'][company.legalHolidayWeekday] +
+        '曜日',
     ],
     [],
   ];

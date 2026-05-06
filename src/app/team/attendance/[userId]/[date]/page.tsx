@@ -72,6 +72,16 @@ export default async function TeamAttendanceDayPage({
     sp.ym && isValidYm(sp.ym) ? sp.ym : jstDate.slice(0, 7);
   const backHref = `/team/attendance/${userId}?ym=${backYm}`;
 
+  const shiftDate = (s: string, delta: number): string => {
+    const base = new Date(`${s}T00:00:00+09:00`);
+    base.setUTCDate(base.getUTCDate() + delta);
+    return formatInTimeZone(base, JST_TIMEZONE, 'yyyy-MM-dd');
+  };
+  const prevDate = shiftDate(jstDate, -1);
+  const nextDate = shiftDate(jstDate, 1);
+  const prevHref = `/team/attendance/${userId}/${prevDate}?ym=${prevDate.slice(0, 7)}`;
+  const nextHref = `/team/attendance/${userId}/${nextDate}?ym=${nextDate.slice(0, 7)}`;
+
   const dayDate = new Date(`${jstDate}T00:00:00+09:00`);
   const clocks = listClocksForDate(target.id, dayDate);
   const note = getDailyNote(target.id, jstDate);
@@ -94,9 +104,25 @@ export default async function TeamAttendanceDayPage({
           >
             ← {target.name} の月次勤怠へ
           </Link>
-          <h1 className="mt-1 text-xl font-semibold">
-            {target.name} ・ {fmtDateHeading(jstDate)}
-          </h1>
+          <div className="mt-1 flex flex-row items-center justify-between gap-3">
+            <h1 className="text-xl font-semibold">
+              {target.name} ・ {fmtDateHeading(jstDate)}
+            </h1>
+            <div className="flex items-center gap-3 text-sm">
+              <Link
+                href={prevHref}
+                className="text-muted-foreground hover:underline"
+              >
+                ← 前日
+              </Link>
+              <Link
+                href={nextHref}
+                className="text-muted-foreground hover:underline"
+              >
+                翌日 →
+              </Link>
+            </div>
+          </div>
           <p className="text-xs text-muted-foreground">
             閲覧専用。打刻の編集や業務内容の更新は本人画面からのみ可能。
           </p>

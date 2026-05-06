@@ -103,16 +103,19 @@ export default async function ReportsPage({
             </CardContent>
           </Card>
 
-          <Card className="border-dashed bg-muted/30">
+          <Card>
             <CardHeader>
               <CardTitle className="text-base">月次勤怠表 PDF</CardTitle>
               <p className="text-xs text-muted-foreground">
-                Phase 2 で PDF 生成ライブラリを導入予定（jsPDF / pdf-lib /
-                @react-pdf/renderer 候補）
+                社員ごとの月次勤怠表を A4 縦の PDF で出力。下部の社員別ボタンから
+                「PDF」を選択してください。
               </p>
             </CardHeader>
             <CardContent>
-              <Button disabled>未実装</Button>
+              <p className="text-xs text-muted-foreground">
+                @react-pdf/renderer + Noto Sans JP（Google Fonts CDN
+                経由）で生成。初回ダウンロード時はフォント取得が走るため数秒かかります。
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -149,14 +152,24 @@ export default async function ReportsPage({
                         {u.email}
                       </td>
                       <td className="px-3 py-3 text-right">
-                        <Button asChild size="sm" variant="outline">
-                          <a
-                            href={`/api/admin/reports/attendance/${u.id}?ym=${ym}`}
-                            download
-                          >
-                            CSV
-                          </a>
-                        </Button>
+                        <div className="flex justify-end gap-2">
+                          <Button asChild size="sm" variant="outline">
+                            <a
+                              href={`/api/admin/reports/attendance/${u.id}?ym=${ym}`}
+                              download
+                            >
+                              CSV
+                            </a>
+                          </Button>
+                          <Button asChild size="sm" variant="outline">
+                            <a
+                              href={`/api/admin/reports/attendance-pdf/${u.id}?ym=${ym}`}
+                              download
+                            >
+                              PDF
+                            </a>
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
