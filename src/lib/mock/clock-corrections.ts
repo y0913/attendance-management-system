@@ -80,6 +80,26 @@ export function findActiveCorrection(
   );
 }
 
+export function findCorrectionById(
+  id: string,
+): MockClockCorrectionRequest | null {
+  ensureSeeded();
+  return store.find((r) => r.id === id) ?? null;
+}
+
+export function listPendingCorrectionsForApprover(
+  approverId: string,
+): MockClockCorrectionRequest[] {
+  ensureSeeded();
+  return store
+    .filter(
+      (r) =>
+        r.currentApproverId === approverId && r.status === 'submitted',
+    )
+    .slice()
+    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+}
+
 const fmt = (d: Date): string =>
   formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
 

@@ -1,6 +1,6 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import Link from 'next/link';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -10,8 +10,6 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
 import {
   currentYearMonthJst,
   shiftYearMonth,
@@ -20,16 +18,15 @@ import {
   type DailySummary,
 } from '@/lib/mock/attendance-summary';
 import { getDailyNotesMap } from '@/lib/mock/daily-notes';
+import { countPendingForApprover } from '@/lib/mock/pending-approvals';
+import { getMockSession } from '@/lib/mock/session';
+import { findMockUserById, isManagerOf } from '@/lib/mock/users';
 
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'] as const;
 
 const isValidYm = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 
 const fmtTime = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
-const fmtMonthTitle = (ym: string) => {
-  const [y, m] = ym.split('-');
-  return `${y}年${Number(m)}月`;
-};
 
 const fmtMinutes = (min: number | null): string => {
   if (min == null) return '-';
@@ -38,27 +35,45 @@ const fmtMinutes = (min: number | null): string => {
   return `${h}:${String(m).padStart(2, '0')}`;
 };
 
+const fmtMonthTitle = (ym: string) => {
+  const [y, m] = ym.split('-');
+  return `${y}年${Number(m)}月`;
+};
+
 const dayClass = (s: DailySummary): string => {
   if (s.weekday === 0) return 'text-rose-600';
   if (s.weekday === 6) return 'text-sky-600';
   return '';
 };
 
-export default async function AttendancePage({
+export default async function TeamAttendanceUserPage({
+  params,
   searchParams,
 }: {
+  params: Promise<{ userId: string }>;
   searchParams: Promise<{ ym?: string }>;
 }) {
   const session = await getMockSession();
   if (!session) redirect('/login');
+  if (session.role !== 'approver' && session.role !== 'admin') {
+    redirect('/clock');
+  }
 
-  const params = await searchParams;
-  const ym =
-    params.ym && isValidYm(params.ym) ? params.ym : currentYearMonthJst();
+  const { userId } = await params;
+  const target = findMockUserById(userId);
+  if (!target) notFound();
 
-  const summaries = summarizeMonth(session.id, ym);
+  // admin は全員、approver は自分の部下のみ
+  if (session.role !== 'admin' && !isManagerOf(session.id, userId)) {
+    redirect('/team/attendance');
+  }
+
+  const sp = await searchParams;
+  const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : currentYearMonthJst();
+
+  const summaries = summarizeMonth(target.id, ym);
   const notesMap = getDailyNotesMap(
-    session.id,
+    target.id,
     summaries.map((s) => s.jstDateKey),
   );
   const totalMin = totalWorkMinutes(summaries);
@@ -76,31 +91,55 @@ export default async function AttendancePage({
     <div className="min-h-screen bg-muted">
       <AppHeader
         user={session}
-        active="attendance"
+        active="team-attendance"
         pendingApprovalCount={pendingCount}
       />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <Link
+              href="/team/attendance"
+              className="text-xs text-muted-foreground hover:underline"
+            >
+              ← 部下の勤怠一覧へ
+            </Link>
+            <h1 className="mt-1 text-xl font-semibold">{target.name} の勤怠</h1>
+            <p className="text-xs text-muted-foreground">{target.email}</p>
+          </div>
+        </div>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
             <div>
-              <CardTitle className="text-xl">勤怠一覧</CardTitle>
+              <CardTitle className="text-base">
+                {fmtMonthTitle(ym)} の勤怠
+              </CardTitle>
               <p className="text-sm text-muted-foreground">
-                {fmtMonthTitle(ym)} ・ 勤務日数 {workedDays} 日 ・ 合計勤務時間{' '}
-                {fmtMinutes(totalMin)}
+                勤務日数 {workedDays} 日 ・ 合計勤務時間 {fmtMinutes(totalMin)}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Button asChild variant="outline" size="sm">
-                <Link href={`/attendance?ym=${prevYm}`}>← 前月</Link>
+                <Link
+                  href={`/team/attendance/${target.id}?ym=${prevYm}`}
+                >
+                  ← 前月
+                </Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href={`/attendance?ym=${currentYearMonthJst()}`}>
+                <Link
+                  href={`/team/attendance/${target.id}?ym=${currentYearMonthJst()}`}
+                >
                   今月
                 </Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link href={`/attendance?ym=${nextYm}`}>次月 →</Link>
+                <Link
+                  href={`/team/attendance/${target.id}?ym=${nextYm}`}
+                >
+                  次月 →
+                </Link>
               </Button>
             </div>
           </CardHeader>
@@ -130,12 +169,7 @@ export default async function AttendancePage({
                         }`}
                       >
                         <td className="px-3 py-2 font-mono">
-                          <Link
-                            href={`/attendance/${s.jstDateKey}?ym=${ym}`}
-                            className="text-primary underline-offset-4 hover:underline"
-                          >
-                            {s.jstDateKey}
-                          </Link>
+                          {s.jstDateKey}
                         </td>
                         <td className={`px-3 py-2 ${dayClass(s)}`}>
                           {WEEKDAY_LABEL[s.weekday]}
@@ -178,7 +212,10 @@ export default async function AttendancePage({
                         </span>
                       )}
                     </td>
-                    <td className="px-3 py-3 text-sm text-muted-foreground" colSpan={2}>
+                    <td
+                      className="px-3 py-3 text-sm text-muted-foreground"
+                      colSpan={2}
+                    >
                       勤務 {workedDays} 日
                     </td>
                     <td className="px-3 py-3 font-mono">
@@ -187,7 +224,7 @@ export default async function AttendancePage({
                     <td className="px-3 py-3 font-mono text-base">
                       {fmtMinutes(totalMin)}
                     </td>
-                    <td className="px-3 py-3"></td>
+                    <td className="px-3 py-3" />
                   </tr>
                 </tfoot>
               </table>

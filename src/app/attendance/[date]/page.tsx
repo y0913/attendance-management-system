@@ -1,7 +1,6 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -9,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { signOutAction } from '@/app/login/actions';
+import { AppHeader } from '@/components/app-header';
 import {
   captureCurrentSnapshot,
   findActiveCorrection,
@@ -21,16 +20,11 @@ import {
   DAILY_NOTE_MAX_LENGTH,
   getDailyNote,
 } from '@/lib/mock/daily-notes';
+import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
 import { listClocksForDate } from '@/lib/mock/time-clocks';
 import { CorrectionForm } from './correction-form';
 import { NoteForm } from './note-form';
-
-const ROLE_LABEL: Record<string, string> = {
-  admin: '管理者',
-  approver: '承認者',
-  general: '一般',
-};
 
 const TYPE_LABEL: Record<string, string> = {
   clock_in: '出勤',
@@ -76,55 +70,15 @@ export default async function AttendanceDetailPage({
   const note = getDailyNote(session.id, jstDate);
   const activeCorrection = findActiveCorrection(session.id, jstDate);
   const currentSnapshot = captureCurrentSnapshot(session.id, jstDate);
+  const pendingCount = countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <div>
-              <p className="text-sm text-muted-foreground">勤怠管理システム</p>
-              <p className="text-base font-semibold">
-                {session.name}{' '}
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {ROLE_LABEL[session.role]}
-                </span>
-              </p>
-            </div>
-            <nav className="flex gap-2 text-sm">
-              <Link
-                href="/clock"
-                className="rounded-md px-3 py-1.5 hover:bg-muted"
-              >
-                打刻
-              </Link>
-              <Link
-                href="/attendance"
-                className="rounded-md bg-muted px-3 py-1.5 font-medium"
-              >
-                勤怠
-              </Link>
-              <Link
-                href="/applications"
-                className="rounded-md px-3 py-1.5 hover:bg-muted"
-              >
-                申請
-              </Link>
-              <Link
-                href="/leave-balance"
-                className="rounded-md px-3 py-1.5 hover:bg-muted"
-              >
-                有給
-              </Link>
-            </nav>
-          </div>
-          <form action={signOutAction}>
-            <Button type="submit" variant="outline" size="sm">
-              サインアウト
-            </Button>
-          </form>
-        </div>
-      </header>
+      <AppHeader
+        user={session}
+        active="attendance"
+        pendingApprovalCount={pendingCount}
+      />
 
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
         <div className="flex items-center justify-between">

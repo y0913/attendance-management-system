@@ -43,3 +43,12 @@ export function findMockUserByEmail(email: string): MockUser | null {
 export function findMockUserById(id: string): MockUser | null {
   return MOCK_USERS.find((u) => u.id === id) ?? null;
 }
+
+export function findSubordinates(managerId: string): MockUser[] {
+  return MOCK_USERS.filter((u) => u.managerId === managerId);
+}
+
+export function isManagerOf(managerId: string, userId: string): boolean {
+  const target = findMockUserById(userId);
+  return target?.managerId === managerId;
+}

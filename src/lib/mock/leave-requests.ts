@@ -60,6 +60,24 @@ export function listLeaveRequests(userId: string): MockLeaveRequest[] {
     .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
 }
 
+export function findLeaveRequestById(id: string): MockLeaveRequest | null {
+  ensureSeeded();
+  return store.find((r) => r.id === id) ?? null;
+}
+
+export function listPendingLeavesForApprover(
+  approverId: string,
+): MockLeaveRequest[] {
+  ensureSeeded();
+  return store
+    .filter(
+      (r) =>
+        r.currentApproverId === approverId && r.status === 'submitted',
+    )
+    .slice()
+    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+}
+
 export interface SubmitLeaveInput {
   requesterId: string;
   leaveType: LeaveType;

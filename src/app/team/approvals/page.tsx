@@ -1,7 +1,6 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -11,20 +10,20 @@ import {
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
 import {
-  listCorrectionRequests,
   STATUS_BADGE_CLASS as CORRECTION_BADGE,
   STATUS_LABEL as CORRECTION_LABEL,
   type ClockSnapshot,
-  type MockClockCorrectionRequest,
 } from '@/lib/mock/clock-corrections';
 import {
   LEAVE_STATUS_BADGE_CLASS,
   LEAVE_STATUS_LABEL,
   LEAVE_TYPE_LABEL,
-  listLeaveRequests,
-  type MockLeaveRequest,
 } from '@/lib/mock/leave-requests';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
+import {
+  countPendingForApprover,
+  listPendingForApprover,
+  type PendingItem,
+} from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
 import { findMockUserById } from '@/lib/mock/users';
 
@@ -32,18 +31,6 @@ const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
 
 const dash = (s: string | null) => s ?? '-';
-
-interface UnifiedRow {
-  id: string;
-  kind: 'correction' | 'leave';
-  badge: { label: string; class: string };
-  typeLabel: string;
-  targetLabel: React.ReactNode;
-  contentNode: React.ReactNode;
-  reason: string;
-  submittedAt: Date;
-  approverName: string;
-}
 
 const renderCorrectionDiff = (
   before: ClockSnapshot,
@@ -55,7 +42,9 @@ const renderCorrectionDiff = (
   if (before.clockOut !== after.clockOut)
     items.push(`退勤 ${dash(before.clockOut)} → ${dash(after.clockOut)}`);
   if (before.breakStart !== after.breakStart)
-    items.push(`休憩開始 ${dash(before.breakStart)} → ${dash(after.breakStart)}`);
+    items.push(
+      `休憩開始 ${dash(before.breakStart)} → ${dash(after.breakStart)}`,
+    );
   if (before.breakEnd !== after.breakEnd)
     items.push(`休憩終了 ${dash(before.breakEnd)} → ${dash(after.breakEnd)}`);
   if (items.length === 0) {
@@ -70,95 +59,105 @@ const renderCorrectionDiff = (
   );
 };
 
-const correctionToRow = (
-  r: MockClockCorrectionRequest,
-): UnifiedRow => ({
-  id: r.id,
-  kind: 'correction',
-  badge: {
-    label: CORRECTION_LABEL[r.status],
-    class: CORRECTION_BADGE[r.status],
-  },
-  typeLabel: '打刻修正',
-  targetLabel: (
-    <Link
-      href={`/attendance/${r.targetDate}?ym=${r.targetDate.slice(0, 7)}`}
-      className="font-mono text-primary underline-offset-4 hover:underline"
-    >
-      {r.targetDate}
-    </Link>
-  ),
-  contentNode: renderCorrectionDiff(r.beforePayload, r.afterPayload),
-  reason: r.reason,
-  submittedAt: r.submittedAt,
-  approverName: r.currentApproverId
-    ? findMockUserById(r.currentApproverId)?.name ?? '-'
-    : '-',
-});
+interface InboxRow {
+  key: string;
+  detailHref: string;
+  badge: { label: string; class: string };
+  typeLabel: string;
+  requesterName: string;
+  targetLabel: React.ReactNode;
+  contentNode: React.ReactNode;
+  reason: string;
+  submittedAt: Date;
+}
 
-const leaveToRow = (r: MockLeaveRequest): UnifiedRow => ({
-  id: r.id,
-  kind: 'leave',
-  badge: {
-    label: LEAVE_STATUS_LABEL[r.status],
-    class: LEAVE_STATUS_BADGE_CLASS[r.status],
-  },
-  typeLabel: LEAVE_TYPE_LABEL[r.leaveType],
-  targetLabel: (
-    <span className="font-mono text-xs">
-      {r.startDate === r.endDate ? r.startDate : `${r.startDate} 〜 ${r.endDate}`}
-    </span>
-  ),
-  contentNode: (
-    <span className="text-xs">
-      <span className="font-mono font-semibold">{r.days}</span> 日間消化
-    </span>
-  ),
-  reason: r.reason,
-  submittedAt: r.submittedAt,
-  approverName: r.currentApproverId
-    ? findMockUserById(r.currentApproverId)?.name ?? '-'
-    : '-',
-});
+const itemToRow = (item: PendingItem): InboxRow => {
+  const requesterName =
+    findMockUserById(item.request.requesterId)?.name ?? '-';
 
-export default async function ApplicationsPage() {
+  if (item.kind === 'correction') {
+    const r = item.request;
+    return {
+      key: `correction:${r.id}`,
+      detailHref: `/team/approvals/correction/${r.id}`,
+      badge: {
+        label: CORRECTION_LABEL[r.status],
+        class: CORRECTION_BADGE[r.status],
+      },
+      typeLabel: '打刻修正',
+      requesterName,
+      targetLabel: <span className="font-mono text-xs">{r.targetDate}</span>,
+      contentNode: renderCorrectionDiff(r.beforePayload, r.afterPayload),
+      reason: r.reason,
+      submittedAt: r.submittedAt,
+    };
+  }
+
+  const r = item.request;
+  return {
+    key: `leave:${r.id}`,
+    detailHref: `/team/approvals/leave/${r.id}`,
+    badge: {
+      label: LEAVE_STATUS_LABEL[r.status],
+      class: LEAVE_STATUS_BADGE_CLASS[r.status],
+    },
+    typeLabel: LEAVE_TYPE_LABEL[r.leaveType],
+    requesterName,
+    targetLabel: (
+      <span className="font-mono text-xs">
+        {r.startDate === r.endDate
+          ? r.startDate
+          : `${r.startDate} 〜 ${r.endDate}`}
+      </span>
+    ),
+    contentNode: (
+      <span className="text-xs">
+        <span className="font-mono font-semibold">{r.days}</span> 日間消化
+      </span>
+    ),
+    reason: r.reason,
+    submittedAt: r.submittedAt,
+  };
+};
+
+export default async function TeamApprovalsPage() {
   const session = await getMockSession();
   if (!session) redirect('/login');
+  if (session.role !== 'approver' && session.role !== 'admin') {
+    redirect('/clock');
+  }
 
-  const corrections = listCorrectionRequests(session.id).map(correctionToRow);
-  const leaves = listLeaveRequests(session.id).map(leaveToRow);
-
-  const rows: UnifiedRow[] = [...corrections, ...leaves].sort(
-    (a, b) => b.submittedAt.getTime() - a.submittedAt.getTime(),
-  );
-
+  const items = listPendingForApprover(session.id);
+  const rows = items.map(itemToRow);
   const pendingCount = countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">
       <AppHeader
         user={session}
-        active="applications"
+        active="team-approvals"
         pendingApprovalCount={pendingCount}
       />
 
       <main className="mx-auto max-w-5xl px-6 py-10">
         <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-xl">自分の申請履歴</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                打刻修正申請は勤怠詳細ページから、有給申請は右のボタンから
-              </p>
-            </div>
-            <Button asChild size="sm">
-              <Link href="/applications/new/leave">+ 有給を申請</Link>
-            </Button>
+          <CardHeader>
+            <CardTitle className="text-xl">
+              承認待ち
+              {pendingCount > 0 && (
+                <span className="ml-2 inline-flex min-w-[1.5rem] items-center justify-center rounded-full bg-rose-600 px-2 py-0.5 text-xs font-semibold text-white">
+                  {pendingCount}
+                </span>
+              )}
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              自分が承認者として割り当てられている未対応の申請一覧
+            </p>
           </CardHeader>
           <CardContent>
             {rows.length === 0 ? (
               <p className="text-sm text-muted-foreground">
-                申請履歴はまだありません
+                未対応の申請はありません
               </p>
             ) : (
               <div className="overflow-x-auto">
@@ -167,17 +166,18 @@ export default async function ApplicationsPage() {
                     <tr className="border-b text-left text-muted-foreground">
                       <th className="px-3 py-2 font-medium">状態</th>
                       <th className="px-3 py-2 font-medium">種別</th>
+                      <th className="px-3 py-2 font-medium">申請者</th>
                       <th className="px-3 py-2 font-medium">対象日</th>
                       <th className="px-3 py-2 font-medium">内容</th>
                       <th className="px-3 py-2 font-medium">理由</th>
                       <th className="px-3 py-2 font-medium">申請日時</th>
-                      <th className="px-3 py-2 font-medium">承認者</th>
+                      <th className="px-3 py-2 font-medium" />
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r) => (
                       <tr
-                        key={r.id}
+                        key={r.key}
                         className="border-b align-top last:border-b-0"
                       >
                         <td className="px-3 py-3">
@@ -188,10 +188,13 @@ export default async function ApplicationsPage() {
                           </span>
                         </td>
                         <td className="px-3 py-3">{r.typeLabel}</td>
+                        <td className="px-3 py-3 text-xs">
+                          {r.requesterName}
+                        </td>
                         <td className="px-3 py-3">{r.targetLabel}</td>
                         <td className="px-3 py-3">{r.contentNode}</td>
                         <td
-                          className="max-w-[260px] truncate px-3 py-3"
+                          className="max-w-[240px] truncate px-3 py-3"
                           title={r.reason}
                         >
                           {r.reason}
@@ -199,8 +202,13 @@ export default async function ApplicationsPage() {
                         <td className="px-3 py-3 font-mono text-xs text-muted-foreground">
                           {fmtDateTime(r.submittedAt)}
                         </td>
-                        <td className="px-3 py-3 text-xs text-muted-foreground">
-                          {r.approverName}
+                        <td className="px-3 py-3 text-right">
+                          <Link
+                            href={r.detailHref}
+                            className="text-xs text-primary underline-offset-4 hover:underline"
+                          >
+                            詳細 →
+                          </Link>
                         </td>
                       </tr>
                     ))}

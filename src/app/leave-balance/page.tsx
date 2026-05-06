@@ -1,7 +1,5 @@
 import { formatInTimeZone } from 'date-fns-tz';
-import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -9,15 +7,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { signOutAction } from '@/app/login/actions';
+import { AppHeader } from '@/components/app-header';
 import { getUserLeaveBalance } from '@/lib/mock/leave-grants';
+import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-
-const ROLE_LABEL: Record<string, string> = {
-  admin: '管理者',
-  approver: '承認者',
-  general: '一般',
-};
 
 const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
 
@@ -37,55 +30,15 @@ export default async function LeaveBalancePage() {
   );
   const tenureYears = Math.floor(tenureMonths / 12);
   const tenureRemMonths = tenureMonths % 12;
+  const pendingCount = countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">
-      <header className="border-b bg-background">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-6">
-            <div>
-              <p className="text-sm text-muted-foreground">勤怠管理システム</p>
-              <p className="text-base font-semibold">
-                {session.name}{' '}
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {ROLE_LABEL[session.role]}
-                </span>
-              </p>
-            </div>
-            <nav className="flex gap-2 text-sm">
-              <Link
-                href="/clock"
-                className="rounded-md px-3 py-1.5 hover:bg-muted"
-              >
-                打刻
-              </Link>
-              <Link
-                href="/attendance"
-                className="rounded-md px-3 py-1.5 hover:bg-muted"
-              >
-                勤怠
-              </Link>
-              <Link
-                href="/applications"
-                className="rounded-md px-3 py-1.5 hover:bg-muted"
-              >
-                申請
-              </Link>
-              <Link
-                href="/leave-balance"
-                className="rounded-md bg-muted px-3 py-1.5 font-medium"
-              >
-                有給
-              </Link>
-            </nav>
-          </div>
-          <form action={signOutAction}>
-            <Button type="submit" variant="outline" size="sm">
-              サインアウト
-            </Button>
-          </form>
-        </div>
-      </header>
+      <AppHeader
+        user={session}
+        active="leave-balance"
+        pendingApprovalCount={pendingCount}
+      />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
