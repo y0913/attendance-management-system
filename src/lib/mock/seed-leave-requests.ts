@@ -1,6 +1,10 @@
 import { formatInTimeZone, toZonedTime } from 'date-fns-tz';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import type { LeaveRequestStatus, LeaveType } from './leave-requests';
+import type {
+  LeaveDayUnit,
+  LeaveRequestStatus,
+  LeaveType,
+} from './leave-requests';
 
 export interface SeedLeave {
   requesterId: string;
@@ -10,6 +14,7 @@ export interface SeedLeave {
   decidedAt: Date | null;
   reason: string;
   leaveType: LeaveType;
+  dayUnit: LeaveDayUnit;
   startDate: string;
   endDate: string;
   days: number;
@@ -45,6 +50,8 @@ export function buildSeedLeaves(now: Date = new Date()): SeedLeave[] {
 
   const rejectedDay = advanceToWeekday(addDays(now, -18), -1);
 
+  const halfDay = advanceToWeekday(addDays(now, -10), -1);
+
   return [
     {
       requesterId,
@@ -54,6 +61,7 @@ export function buildSeedLeaves(now: Date = new Date()): SeedLeave[] {
       decidedAt: null,
       reason: '私用のため',
       leaveType: 'paid',
+      dayUnit: 'full',
       startDate: jstDateOf(submittedStart),
       endDate: jstDateOf(submittedEnd),
       days: 2,
@@ -66,6 +74,7 @@ export function buildSeedLeaves(now: Date = new Date()): SeedLeave[] {
       decidedAt: addDays(now, -27),
       reason: '帰省のため',
       leaveType: 'paid',
+      dayUnit: 'full',
       startDate: jstDateOf(approvedStart),
       endDate: jstDateOf(approvedEnd),
       days: 3,
@@ -78,9 +87,23 @@ export function buildSeedLeaves(now: Date = new Date()): SeedLeave[] {
       decidedAt: addDays(now, -18),
       reason: 'リフレッシュのため',
       leaveType: 'paid',
+      dayUnit: 'full',
       startDate: jstDateOf(rejectedDay),
       endDate: jstDateOf(rejectedDay),
       days: 1,
+    },
+    {
+      requesterId,
+      approverId,
+      status: 'approved',
+      submittedAt: addDays(now, -11),
+      decidedAt: addDays(now, -10),
+      reason: '通院のため（午後半休）',
+      leaveType: 'paid',
+      dayUnit: 'half',
+      startDate: jstDateOf(halfDay),
+      endDate: jstDateOf(halfDay),
+      days: 0.5,
     },
   ];
 }

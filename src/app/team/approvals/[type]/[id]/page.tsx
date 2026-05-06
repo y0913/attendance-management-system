@@ -279,6 +279,16 @@ export default async function ApprovalDetailPage({
                   ? r.startDate
                   : `${r.startDate} 〜 ${r.endDate}`}
               </dd>
+              <dt className="text-muted-foreground">取得単位</dt>
+              <dd>
+                {r.dayUnit === 'half' ? (
+                  <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-900">
+                    半日
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">全日</span>
+                )}
+              </dd>
               <dt className="text-muted-foreground">消化日数</dt>
               <dd className="font-mono">{r.days} 日</dd>
               <dt className="text-muted-foreground">申請日時</dt>

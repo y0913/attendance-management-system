@@ -2,6 +2,7 @@ import type { NextRequest } from 'next/server';
 import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
 import { currentYearMonthJst } from '@/lib/mock/attendance-summary';
 import { getCompany } from '@/lib/mock/companies';
+import { computeMonthlyPayroll } from '@/lib/mock/payroll-bridge';
 import { getMockSession } from '@/lib/mock/session';
 import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
 import { csvResponse, rowsToCsv } from '@/lib/util/csv';
@@ -24,6 +25,8 @@ const fmtMinutes = (n: number): string => {
   const m = n % 60;
   return `${h}:${String(m).padStart(2, '0')}`;
 };
+
+const fmtYen = (n: number): string => Math.round(n).toString();
 
 export async function GET(request: NextRequest): Promise<Response> {
   const session = await getMockSession();
@@ -48,16 +51,39 @@ export async function GET(request: NextRequest): Promise<Response> {
     'ロール',
     '雇用形態',
     '基本給',
+    '時給単価',
     '勤務日数',
     '合計勤務時間',
     '退勤未打刻日数',
     '承認済有給日数',
     '承認者',
     '締め状態',
+    // 詳細時間（分）
+    '所定内勤務(分)',
+    '深夜(分)',
+    '法定外残業(分)',
+    '残業×深夜(分)',
+    '月60h超(分)',
+    '月60h超×深夜(分)',
+    '法定休日(分)',
+    '法定休日×深夜(分)',
+    // 賃金内訳（円）
+    '所定内賃金',
+    '深夜割増',
+    '残業割増',
+    '残業×深夜割増',
+    '月60h超割増',
+    '月60h超×深夜割増',
+    '法定休日割増',
+    '法定休日×深夜割増',
+    '総額',
   ];
   const body: unknown[][] = users.map((u) => {
-    const summary = getEffectiveMonthlySummary(u.id, ym);
+    const baseSummary = getEffectiveMonthlySummary(u.id, ym);
+    const payroll = computeMonthlyPayroll(u.id, ym);
     const manager = u.managerId ? findMockUserById(u.managerId) : null;
+    const s = payroll.summary;
+    const p = payroll.premium;
     return [
       u.id,
       u.name,
@@ -65,12 +91,32 @@ export async function GET(request: NextRequest): Promise<Response> {
       ROLE_LABEL[u.role],
       EMPLOYMENT_LABEL[u.employmentType],
       u.baseSalary ?? '',
-      summary.workedDays,
-      fmtMinutes(summary.totalWorkMinutes),
-      summary.missingClockOutDays,
-      summary.approvedLeaveDays,
+      Math.round(payroll.baseHourlyRate), // 円/時 概算
+      baseSummary.workedDays,
+      fmtMinutes(baseSummary.totalWorkMinutes),
+      baseSummary.missingClockOutDays,
+      baseSummary.approvedLeaveDays,
       manager?.name ?? '',
-      summary.isClosed ? '締め済み' : '未締め',
+      baseSummary.isClosed ? '締め済み' : '未締め',
+      // 時間
+      s ? s.regularWorkMinutes : '',
+      s ? s.regularNightMinutes : '',
+      s ? s.regularOtMinutes : '',
+      s ? s.regularOtNightMinutes : '',
+      s ? s.monthly60hOtMinutes : '',
+      s ? s.monthly60hOtNightMinutes : '',
+      s ? s.legalHolidayWorkMinutes : '',
+      s ? s.legalHolidayNightMinutes : '',
+      // 賃金
+      p ? fmtYen(p.regularPay) : '',
+      p ? fmtYen(p.regularNightPay) : '',
+      p ? fmtYen(p.regularOtPay) : '',
+      p ? fmtYen(p.regularOtNightPay) : '',
+      p ? fmtYen(p.monthly60hOtPay) : '',
+      p ? fmtYen(p.monthly60hOtNightPay) : '',
+      p ? fmtYen(p.legalHolidayPay) : '',
+      p ? fmtYen(p.legalHolidayNightPay) : '',
+      p ? fmtYen(p.total) : '',
     ];
   });
 
@@ -80,6 +126,14 @@ export async function GET(request: NextRequest): Promise<Response> {
     [
       '締日',
       company.closingDay === 0 ? '月末' : `毎月 ${company.closingDay} 日`,
+    ],
+    [
+      '月途中ルール変更戦略',
+      company.midMonthRateChangeStrategy === 'daily' ? '日次' : '月末',
+    ],
+    [
+      '注釈',
+      '時給単価は baseSalary / (22×8) の概算。法定休日フラグは未対応(現状 0)。',
     ],
     [],
   ];

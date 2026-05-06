@@ -114,8 +114,15 @@ const leaveToRow = (r: MockLeaveRequest): UnifiedRow => ({
     </span>
   ),
   contentNode: (
-    <span className="text-xs">
-      <span className="font-mono font-semibold">{r.days}</span> 日間消化
+    <span className="flex items-center gap-1 text-xs">
+      {r.dayUnit === 'half' && (
+        <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-medium text-amber-900">
+          半日
+        </span>
+      )}
+      <span>
+        <span className="font-mono font-semibold">{r.days}</span> 日消化
+      </span>
     </span>
   ),
   reason: r.reason,

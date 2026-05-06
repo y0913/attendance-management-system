@@ -1,8 +1,8 @@
-import { countWeekdaysBetween } from '@/lib/calc/weekday-count';
+import { countBusinessDaysBetween } from '@/lib/calc/weekday-count';
 import { findMockUserById } from './users';
 import { buildSeedLeaves } from './seed-leave-requests';
 
-export { countWeekdaysBetween };
+export { countBusinessDaysBetween };
 
 export type LeaveRequestStatus =
   | 'submitted'
@@ -12,6 +12,7 @@ export type LeaveRequestStatus =
   | 'returned';
 
 export type LeaveType = 'paid';
+export type LeaveDayUnit = 'full' | 'half';
 
 export interface MockLeaveRequest {
   id: string;
@@ -22,6 +23,7 @@ export interface MockLeaveRequest {
   decidedAt: Date | null;
   reason: string;
   leaveType: LeaveType;
+  dayUnit: LeaveDayUnit;
   startDate: string;
   endDate: string;
   days: number;
@@ -45,6 +47,7 @@ function ensureSeeded(): void {
       decidedAt: r.decidedAt,
       reason: r.reason,
       leaveType: r.leaveType,
+      dayUnit: r.dayUnit,
       startDate: r.startDate,
       endDate: r.endDate,
       days: r.days,
@@ -96,16 +99,27 @@ export function listAllLeaves(): MockLeaveRequest[] {
 export interface SubmitLeaveInput {
   requesterId: string;
   leaveType: LeaveType;
+  dayUnit: LeaveDayUnit;
   startDate: string;
   endDate: string;
   reason: string;
 }
 
-export function submitLeave(input: SubmitLeaveInput): MockLeaveRequest {
+export type SubmitLeaveResult =
+  | { ok: true; request: MockLeaveRequest }
+  | { ok: false; reason: 'HALF_DAY_REQUIRES_SINGLE_DATE' };
+
+export function submitLeave(input: SubmitLeaveInput): SubmitLeaveResult {
   ensureSeeded();
+  if (input.dayUnit === 'half' && input.startDate !== input.endDate) {
+    return { ok: false, reason: 'HALF_DAY_REQUIRES_SINGLE_DATE' };
+  }
   const requester = findMockUserById(input.requesterId);
   const approverId = requester?.managerId ?? null;
-  const days = countWeekdaysBetween(input.startDate, input.endDate);
+  const days =
+    input.dayUnit === 'half'
+      ? 0.5
+      : countBusinessDaysBetween(input.startDate, input.endDate);
   const req: MockLeaveRequest = {
     id: `lr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     requesterId: input.requesterId,
@@ -115,12 +129,13 @@ export function submitLeave(input: SubmitLeaveInput): MockLeaveRequest {
     decidedAt: null,
     reason: input.reason,
     leaveType: input.leaveType,
+    dayUnit: input.dayUnit,
     startDate: input.startDate,
     endDate: input.endDate,
     days,
   };
   store.push(req);
-  return req;
+  return { ok: true, request: req };
 }
 
 export type WithdrawLeaveResult =
