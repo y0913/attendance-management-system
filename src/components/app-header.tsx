@@ -21,7 +21,8 @@ export type NavKey =
   | 'admin-employees'
   | 'admin-attendance'
   | 'admin-work-rules'
-  | 'admin-company-settings';
+  | 'admin-company-settings'
+  | 'admin-audit-logs';
 
 interface NavItem {
   key: NavKey;
@@ -92,6 +93,11 @@ export function AppHeader({
             key: 'admin-company-settings',
             href: '/admin/company-settings',
             label: '会社設定',
+          },
+          {
+            key: 'admin-audit-logs',
+            href: '/admin/audit-logs',
+            label: '監査ログ',
           },
         ]
       : [];

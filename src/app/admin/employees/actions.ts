@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { recordAuditLog } from '@/lib/mock/audit-logs';
 import { getMockSession } from '@/lib/mock/session';
 import {
   createMockUser,
@@ -101,7 +102,8 @@ export async function upsertEmployeeAction(
   if (data.id) {
     const target = findMockUserById(data.id);
     if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
-    updateMockUser(data.id, {
+    const beforeSnap = { ...target };
+    const updated = updateMockUser(data.id, {
       name: data.name,
       email: data.email,
       role: data.role,
@@ -110,8 +112,17 @@ export async function upsertEmployeeAction(
       hiredAt,
       baseSalary: data.baseSalary,
     });
+    recordAuditLog({
+      entityType: 'user',
+      entityId: data.id,
+      action: 'update',
+      actorId: session.id,
+      before: beforeSnap,
+      after: updated,
+    });
     revalidatePath('/admin/employees');
     revalidatePath(`/admin/employees/${data.id}`);
+    revalidatePath('/admin/audit-logs');
     return { ok: true, data: { id: data.id } };
   }
 
@@ -124,7 +135,16 @@ export async function upsertEmployeeAction(
     hiredAt,
     baseSalary: data.baseSalary,
   });
+  recordAuditLog({
+    entityType: 'user',
+    entityId: created.id,
+    action: 'create',
+    actorId: session.id,
+    before: null,
+    after: created,
+  });
   revalidatePath('/admin/employees');
+  revalidatePath('/admin/audit-logs');
   return { ok: true, data: { id: created.id } };
 }
 
@@ -159,8 +179,21 @@ export async function setEmployeeDeactivationAction(input: {
   const target = findMockUserById(parsed.data.id);
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
-  setUserDeactivation(parsed.data.id, parsed.data.deactivate ? new Date() : null);
+  const beforeSnap = { ...target };
+  const updated = setUserDeactivation(
+    parsed.data.id,
+    parsed.data.deactivate ? new Date() : null,
+  );
+  recordAuditLog({
+    entityType: 'user',
+    entityId: parsed.data.id,
+    action: parsed.data.deactivate ? 'deactivate' : 'reactivate',
+    actorId: session.id,
+    before: beforeSnap,
+    after: updated,
+  });
   revalidatePath('/admin/employees');
   revalidatePath(`/admin/employees/${parsed.data.id}`);
+  revalidatePath('/admin/audit-logs');
   return { ok: true, data: { id: parsed.data.id } };
 }

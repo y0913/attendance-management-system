@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { recordAuditLog } from '@/lib/mock/audit-logs';
 import { getMockSession } from '@/lib/mock/session';
 import {
   checkComplianceViolations,
@@ -132,14 +133,33 @@ export async function upsertWorkRuleAction(
         },
       };
     }
-    updateWorkRuleVersion(data.id, ruleInput);
+    const beforeSnap = { ...target };
+    const updated = updateWorkRuleVersion(data.id, ruleInput);
+    recordAuditLog({
+      entityType: 'work_rule_version',
+      entityId: data.id,
+      action: 'update',
+      actorId: session.id,
+      before: beforeSnap,
+      after: updated,
+    });
     revalidatePath('/admin/work-rules');
     revalidatePath(`/admin/work-rules/${data.id}`);
+    revalidatePath('/admin/audit-logs');
     return { ok: true, data: { id: data.id } };
   }
 
   const created = createWorkRuleVersion(ruleInput, session.id);
+  recordAuditLog({
+    entityType: 'work_rule_version',
+    entityId: created.id,
+    action: 'create',
+    actorId: session.id,
+    before: null,
+    after: created,
+  });
   revalidatePath('/admin/work-rules');
+  revalidatePath('/admin/audit-logs');
   return { ok: true, data: { id: created.id } };
 }
 
@@ -164,7 +184,17 @@ export async function deleteWorkRuleAction(input: {
     };
   }
 
+  const beforeSnap = { ...target };
   deleteWorkRuleVersion(input.id);
+  recordAuditLog({
+    entityType: 'work_rule_version',
+    entityId: input.id,
+    action: 'delete',
+    actorId: session.id,
+    before: beforeSnap,
+    after: null,
+  });
   revalidatePath('/admin/work-rules');
+  revalidatePath('/admin/audit-logs');
   return { ok: true, data: undefined };
 }
