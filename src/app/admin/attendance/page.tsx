@@ -2,6 +2,7 @@ import { formatInTimeZone } from 'date-fns-tz';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/pagination';
 import {
   Card,
   CardContent,
@@ -76,7 +77,12 @@ const summarizeUser = async (
 export default async function AdminAttendancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ ym?: string; role?: string; manager?: string }>;
+  searchParams: Promise<{
+    ym?: string;
+    role?: string;
+    manager?: string;
+    page?: string;
+  }>;
 }) {
   const session = await getMockSession();
   if (!session) redirect('/login');
@@ -86,6 +92,10 @@ export default async function AdminAttendancePage({
   const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : currentYearMonthJst();
   const roleFilter = sp.role && isRole(sp.role) ? sp.role : null;
   const managerFilter = sp.manager ?? null;
+  const pageNum = Math.max(
+    1,
+    Number.isFinite(Number(sp.page)) ? Number(sp.page) : 1,
+  );
 
   const users = await listActiveUsers();
   const userById = new Map(users.map((u) => [u.id, u]));
@@ -98,7 +108,16 @@ export default async function AdminAttendancePage({
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
-  const rows = await Promise.all(filtered.map((u) => summarizeUser(u, ym)));
+  const PAGE_SIZE = 20;
+  const totalCount = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(pageNum, totalPages);
+  const paged = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+
+  const rows = await Promise.all(paged.map((u) => summarizeUser(u, ym)));
 
   const totalWorkAll = rows.reduce((sum, r) => sum + r.totalWorkMin, 0);
   const missingTotal = rows.reduce(
@@ -119,6 +138,7 @@ export default async function AdminAttendancePage({
     ym?: string;
     role?: string | null;
     manager?: string | null;
+    page?: number;
   }): string => {
     const params = new URLSearchParams();
     const targetYm = overrides.ym ?? ym;
@@ -129,6 +149,16 @@ export default async function AdminAttendancePage({
     const targetManager =
       overrides.manager !== undefined ? overrides.manager : managerFilter;
     if (targetManager) params.set('manager', targetManager);
+    // フィルタ変更時はページを 1 に戻す（filter が指定されない場合は currentPage を維持）
+    const targetPage =
+      overrides.page !== undefined
+        ? overrides.page
+        : overrides.role !== undefined ||
+            overrides.manager !== undefined ||
+            overrides.ym !== undefined
+          ? 1
+          : currentPage;
+    if (targetPage > 1) params.set('page', String(targetPage));
     const qs = params.toString();
     return qs ? `/admin/attendance?${qs}` : '/admin/attendance';
   };
@@ -341,6 +371,16 @@ export default async function AdminAttendancePage({
                     </tr>
                   </tfoot>
                 </table>
+              </div>
+            )}
+            {totalCount > 0 && (
+              <div className="mt-4 border-t pt-3">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalLabel={`全 ${totalCount} 名`}
+                  buildHref={(p) => buildHref({ page: p })}
+                />
               </div>
             )}
           </CardContent>

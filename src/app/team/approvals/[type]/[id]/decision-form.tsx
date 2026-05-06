@@ -87,13 +87,22 @@ export function DecisionForm({ type, id, commentMaxLength }: Props) {
           rows={3}
           placeholder="承認者からのコメント"
           className="rounded-md border bg-background px-3 py-2 text-sm shadow-sm"
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? 'approval-error' : 'approval-counter'}
         />
-        <span className="self-end text-xs text-muted-foreground">
+        <span
+          id="approval-counter"
+          className="self-end text-xs text-muted-foreground"
+        >
           {comment.length} / {commentMaxLength}
         </span>
       </div>
 
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {error && (
+        <p id="approval-error" role="alert" className="text-sm text-rose-600">
+          {error}
+        </p>
+      )}
 
       <div className="flex flex-wrap justify-end gap-2">
         <Button

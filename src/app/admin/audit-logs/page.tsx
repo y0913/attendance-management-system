@@ -13,11 +13,13 @@ import {
   AUDIT_ACTION_BADGE,
   AUDIT_ACTION_LABEL,
   AUDIT_ENTITY_LABEL,
+  countAuditLogs,
   listAuditLogs,
   type AuditAction,
   type AuditEntityType,
   type MockAuditLog,
 } from '@/lib/data/audit-logs';
+import { Pagination } from '@/components/pagination';
 import { countPendingForApprover } from '@/lib/data/pending-approvals';
 import { getMockSession } from '@/lib/data/session';
 import { listAllUsers } from '@/lib/data/users';
@@ -42,10 +44,12 @@ const jsonReplacer = (_key: string, value: unknown): unknown => {
   return value;
 };
 
+const PAGE_SIZE = 20;
+
 export default async function AuditLogsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ entity?: string; actor?: string }>;
+  searchParams: Promise<{ entity?: string; actor?: string; page?: string }>;
 }) {
   const session = await getMockSession();
   if (!session) redirect('/login');
@@ -55,11 +59,20 @@ export default async function AuditLogsPage({
   const entityFilter =
     sp.entity && isEntityType(sp.entity) ? sp.entity : null;
   const actorFilter = sp.actor ?? null;
+  const pageNum = Math.max(1, Number.isFinite(Number(sp.page)) ? Number(sp.page) : 1);
+
+  const totalCount = await countAuditLogs({
+    entityType: entityFilter ?? undefined,
+    actorId: actorFilter ?? undefined,
+  });
+  const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
+  const currentPage = Math.min(pageNum, totalPages);
 
   const logs = await listAuditLogs({
     entityType: entityFilter ?? undefined,
     actorId: actorFilter ?? undefined,
-    limit: 200,
+    limit: PAGE_SIZE,
+    offset: (currentPage - 1) * PAGE_SIZE,
   });
   const myPending = await countPendingForApprover(session.id);
   const allUsers = await listAllUsers();
@@ -68,12 +81,15 @@ export default async function AuditLogsPage({
   const buildHref = (overrides: {
     entity?: AuditEntityType | null;
     actor?: string | null;
+    page?: number;
   }): string => {
     const params = new URLSearchParams();
     const e = overrides.entity !== undefined ? overrides.entity : entityFilter;
     if (e) params.set('entity', e);
     const a = overrides.actor !== undefined ? overrides.actor : actorFilter;
     if (a) params.set('actor', a);
+    const p = overrides.page !== undefined ? overrides.page : currentPage;
+    if (p > 1) params.set('page', String(p));
     const qs = params.toString();
     return qs ? `/admin/audit-logs?${qs}` : '/admin/audit-logs';
   };
@@ -92,8 +108,8 @@ export default async function AuditLogsPage({
             <div>
               <CardTitle className="text-xl">監査ログ</CardTitle>
               <p className="text-sm text-muted-foreground">
-                会社設定・労働ルール・従業員 への変更を時系列で記録（最大 200
-                件・新しい順）
+                会社設定・労働ルール・従業員 への変更を時系列で記録（新しい順、
+                {PAGE_SIZE} 件/ページ）
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -168,6 +184,16 @@ export default async function AuditLogsPage({
                   />
                 ))}
               </ul>
+            )}
+            {totalCount > 0 && (
+              <div className="mt-4 border-t pt-3">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  totalLabel={`全 ${totalCount} 件`}
+                  buildHref={(p) => buildHref({ page: p })}
+                />
+              </div>
             )}
           </CardContent>
         </Card>

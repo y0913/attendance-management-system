@@ -25,7 +25,7 @@ export function LoginForm() {
   const error = errorMessage(state);
 
   return (
-    <form action={action} className="flex flex-col gap-4">
+    <form action={action} className="flex flex-col gap-4" noValidate>
       <div className="flex flex-col gap-2">
         <Label htmlFor="email">メールアドレス</Label>
         <Input
@@ -35,11 +35,26 @@ export function LoginForm() {
           placeholder="example@example.com"
           autoComplete="email"
           required
+          aria-required="true"
+          aria-invalid={error ? 'true' : undefined}
+          aria-describedby={error ? 'login-error' : undefined}
         />
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button type="submit" disabled={pending}>
-        {pending ? 'ログイン中…' : 'ログイン'}
+      {error && (
+        <p
+          id="login-error"
+          role="alert"
+          className="text-sm text-destructive"
+        >
+          {error}
+        </p>
+      )}
+      <Button
+        type="submit"
+        disabled={pending}
+        aria-busy={pending ? 'true' : undefined}
+      >
+        {pending ? 'ログイン中…' : 'ログインリンクを送信'}
       </Button>
     </form>
   );

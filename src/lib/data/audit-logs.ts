@@ -82,6 +82,7 @@ export interface ListAuditLogsFilters {
   entityType?: AuditEntityType;
   actorId?: string;
   limit?: number;
+  offset?: number;
 }
 
 export async function listAuditLogs(
@@ -94,8 +95,20 @@ export async function listAuditLogs(
     },
     orderBy: { createdAt: 'desc' },
     ...(filters.limit && filters.limit > 0 ? { take: filters.limit } : {}),
+    ...(filters.offset && filters.offset > 0 ? { skip: filters.offset } : {}),
   });
   return list.map(toMockAuditLog);
+}
+
+export async function countAuditLogs(
+  filters: Omit<ListAuditLogsFilters, 'limit' | 'offset'> = {},
+): Promise<number> {
+  return prisma.auditLog.count({
+    where: {
+      ...(filters.entityType ? { entityType: filters.entityType } : {}),
+      ...(filters.actorId ? { actorId: filters.actorId } : {}),
+    },
+  });
 }
 
 export const AUDIT_ENTITY_LABEL: Record<AuditEntityType, string> = {
