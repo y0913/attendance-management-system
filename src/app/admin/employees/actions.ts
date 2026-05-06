@@ -3,15 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
-import { recordAuditLog } from '@/lib/mock/audit-logs';
-import { getMockSession } from '@/lib/mock/session';
+import { recordAuditLog } from '@/lib/data/audit-logs';
+import { getMockSession } from '@/lib/data/session';
 import {
   createMockUser,
   findMockUserById,
   isEmailTaken,
   setUserDeactivation,
   updateMockUser,
-} from '@/lib/mock/users';
+} from '@/lib/data/users';
 
 const RoleEnum = z.enum(['admin', 'approver', 'general']);
 const EmploymentEnum = z.enum(['monthly', 'hourly']);

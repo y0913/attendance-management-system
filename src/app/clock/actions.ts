@@ -4,12 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { TimeClockType } from '@prisma/client';
 import type { ActionResult } from '@/lib/action-result';
-import { getMockSession } from '@/lib/mock/session';
+import { getMockSession } from '@/lib/data/session';
 import {
   appendClock,
   getClockState,
   type ClockState,
-} from '@/lib/mock/time-clocks';
+} from '@/lib/data/time-clocks';
 
 const PunchSchema = z.object({
   type: z.enum(['clock_in', 'clock_out', 'break_start', 'break_end']),

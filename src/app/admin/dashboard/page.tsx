@@ -12,27 +12,27 @@ import { AppHeader } from '@/components/app-header';
 import {
   STATUS_BADGE_CLASS as CORRECTION_BADGE,
   STATUS_LABEL as CORRECTION_LABEL,
-} from '@/lib/mock/clock-corrections';
+} from '@/lib/data/clock-corrections';
 import {
   LEAVE_STATUS_BADGE_CLASS,
   LEAVE_STATUS_LABEL,
   LEAVE_TYPE_LABEL,
-} from '@/lib/mock/leave-requests';
+} from '@/lib/data/leave-requests';
 import {
   currentYearMonthJst,
   shiftYearMonth,
-} from '@/lib/mock/attendance-summary';
-import { listClosingsForMonth } from '@/lib/mock/attendance-closings';
-import { countOvertimeAlerts } from '@/lib/mock/overtime-alerts';
+} from '@/lib/data/attendance-summary';
+import { listClosingsForMonth } from '@/lib/data/attendance-closings';
+import { countOvertimeAlerts } from '@/lib/data/overtime-alerts';
 import {
   countAllPending,
   countPendingForApprover,
   listAllRecentRequests,
   type PendingItem,
-} from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { countClockStates } from '@/lib/mock/time-clocks';
-import { listActiveUsers } from '@/lib/mock/users';
+} from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { countClockStates } from '@/lib/data/time-clocks';
+import { listActiveUsers } from '@/lib/data/users';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');

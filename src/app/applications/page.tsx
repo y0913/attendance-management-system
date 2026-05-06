@@ -16,17 +16,17 @@ import {
   STATUS_LABEL as CORRECTION_LABEL,
   type ClockSnapshot,
   type MockClockCorrectionRequest,
-} from '@/lib/mock/clock-corrections';
+} from '@/lib/data/clock-corrections';
 import {
   LEAVE_STATUS_BADGE_CLASS,
   LEAVE_STATUS_LABEL,
   LEAVE_TYPE_LABEL,
   listLeaveRequests,
   type MockLeaveRequest,
-} from '@/lib/mock/leave-requests';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listAllUsers } from '@/lib/mock/users';
+} from '@/lib/data/leave-requests';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listAllUsers } from '@/lib/data/users';
 import { WithdrawButton } from './withdraw-button';
 
 const fmtDateTime = (d: Date) =>

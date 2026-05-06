@@ -8,12 +8,12 @@ import {
   findActiveCorrection,
   REASON_MAX_LENGTH,
   submitCorrection,
-} from '@/lib/mock/clock-corrections';
+} from '@/lib/data/clock-corrections';
 import {
   DAILY_NOTE_MAX_LENGTH,
   upsertDailyNote,
-} from '@/lib/mock/daily-notes';
-import { getMockSession } from '@/lib/mock/session';
+} from '@/lib/data/daily-notes';
+import { getMockSession } from '@/lib/data/session';
 
 const SaveSchema = z.object({
   jstDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),

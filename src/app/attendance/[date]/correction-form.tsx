@@ -5,7 +5,7 @@ import { useState, useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { submitCorrectionAction } from './actions';
-import type { ClockSnapshot } from '@/lib/mock/clock-corrections';
+import type { ClockSnapshot } from '@/lib/data/clock-corrections';
 
 interface Props {
   jstDate: string;

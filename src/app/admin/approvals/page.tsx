@@ -13,20 +13,20 @@ import {
   STATUS_BADGE_CLASS as CORRECTION_BADGE,
   STATUS_LABEL as CORRECTION_LABEL,
   type ClockSnapshot,
-} from '@/lib/mock/clock-corrections';
+} from '@/lib/data/clock-corrections';
 import {
   LEAVE_STATUS_BADGE_CLASS,
   LEAVE_STATUS_LABEL,
   LEAVE_TYPE_LABEL,
-} from '@/lib/mock/leave-requests';
+} from '@/lib/data/leave-requests';
 import {
   countAllPending,
   countPendingForApprover,
   listAllPending,
   type PendingItem,
-} from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listAllUsers } from '@/lib/mock/users';
+} from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listAllUsers } from '@/lib/data/users';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');

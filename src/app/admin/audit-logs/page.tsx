@@ -17,10 +17,10 @@ import {
   type AuditAction,
   type AuditEntityType,
   type MockAuditLog,
-} from '@/lib/mock/audit-logs';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listAllUsers } from '@/lib/mock/users';
+} from '@/lib/data/audit-logs';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listAllUsers } from '@/lib/data/users';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm:ss');

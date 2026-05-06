@@ -1,10 +1,10 @@
 import type { NextRequest } from 'next/server';
-import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
-import { currentYearMonthJst } from '@/lib/mock/attendance-summary';
-import { getCompany } from '@/lib/mock/companies';
-import { computeMonthlyPayroll } from '@/lib/mock/payroll-bridge';
-import { getMockSession } from '@/lib/mock/session';
-import { listActiveUsers } from '@/lib/mock/users';
+import { getEffectiveMonthlySummary } from '@/lib/data/attendance-closings';
+import { currentYearMonthJst } from '@/lib/data/attendance-summary';
+import { getCompany } from '@/lib/data/companies';
+import { computeMonthlyPayroll } from '@/lib/data/payroll-bridge';
+import { getMockSession } from '@/lib/data/session';
+import { listActiveUsers } from '@/lib/data/users';
 import { csvResponse, rowsToCsv } from '@/lib/util/csv';
 
 const ROLE_LABEL: Record<string, string> = {

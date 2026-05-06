@@ -4,7 +4,7 @@ import { useTransition } from 'react';
 import type { TimeClockType } from '@prisma/client';
 import { Button } from '@/components/ui/button';
 import { punchClockAction } from './actions';
-import type { ClockState } from '@/lib/mock/time-clocks';
+import type { ClockState } from '@/lib/data/time-clocks';
 
 interface Props {
   state: ClockState;

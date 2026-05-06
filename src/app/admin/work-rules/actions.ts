@@ -3,8 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
-import { recordAuditLog } from '@/lib/mock/audit-logs';
-import { getMockSession } from '@/lib/mock/session';
+import { recordAuditLog } from '@/lib/data/audit-logs';
+import { getMockSession } from '@/lib/data/session';
 import {
   checkComplianceViolations,
   createWorkRuleVersion,
@@ -14,7 +14,7 @@ import {
   isValidFromTaken,
   updateWorkRuleVersion,
   type RuleInput,
-} from '@/lib/mock/work-rule-versions';
+} from '@/lib/data/work-rule-versions';
 
 const TimeRegex = /^([01]\d|2[0-3]):[0-5]\d$/;
 

@@ -5,8 +5,8 @@ import { z } from 'zod';
 import {
   clearMockSession,
   setMockSession,
-} from '@/lib/mock/session';
-import { findMockUserByEmail } from '@/lib/mock/users';
+} from '@/lib/data/session';
+import { findMockUserByEmail } from '@/lib/data/users';
 import type { ActionResult } from '@/lib/action-result';
 
 const SignInSchema = z.object({

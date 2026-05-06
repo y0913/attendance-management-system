@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
-import { recordAuditLog } from '@/lib/mock/audit-logs';
-import { getCompany, updateCompany } from '@/lib/mock/companies';
-import { getMockSession } from '@/lib/mock/session';
+import { recordAuditLog } from '@/lib/data/audit-logs';
+import { getCompany, updateCompany } from '@/lib/data/companies';
+import { getMockSession } from '@/lib/data/session';
 
 const StrategyEnum = z.enum(['daily', 'month_end']);
 const WeekdayEnum = z.union([

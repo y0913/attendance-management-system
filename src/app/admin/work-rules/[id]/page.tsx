@@ -9,14 +9,14 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById } from '@/lib/mock/users';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { findMockUserById } from '@/lib/data/users';
 import {
   classifyVersionStatus,
   findWorkRuleVersionById,
   listWorkRuleVersions,
-} from '@/lib/mock/work-rule-versions';
+} from '@/lib/data/work-rule-versions';
 import { WorkRuleForm } from '../work-rule-form';
 import { DeleteForm } from './delete-form';
 

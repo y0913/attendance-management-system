@@ -42,3 +42,7 @@ next-env.d.ts
 
 # local dev memos (not for commit)
 DEV_NOTES.md
+
+# fonts (auto-fetched by scripts/fetch-fonts.mjs on postinstall)
+/public/fonts/*.ttf
+/public/fonts/*.otf

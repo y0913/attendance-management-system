@@ -7,9 +7,9 @@ import {
 } from '@react-pdf/renderer';
 import { formatInTimeZone } from 'date-fns-tz';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import type { EffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
-import type { MockCompany } from '@/lib/mock/companies';
-import type { MockUser } from '@/lib/mock/users';
+import type { EffectiveMonthlySummary } from '@/lib/data/attendance-closings';
+import type { MockCompany } from '@/lib/data/companies';
+import type { MockUser } from '@/lib/data/users';
 import { ensureJapaneseFontRegistered } from './fonts';
 
 const WEEKDAY = ['日', '月', '火', '水', '木', '金', '土'] as const;

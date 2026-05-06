@@ -8,9 +8,9 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { getUserLeaveBalance } from '@/lib/mock/leave-grants';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
+import { getUserLeaveBalance } from '@/lib/data/leave-grants';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
 
 const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
 

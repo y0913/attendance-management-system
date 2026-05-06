@@ -45,13 +45,12 @@ describe('isBusinessDay', () => {
 });
 
 describe('isYearSupported', () => {
-  it('returns true for hardcoded years', () => {
+  // @holiday-jp/holiday_jp に移行後、内蔵データが広範囲のため常に true。
+  // 関数は API 互換のため残置している。
+  it('returns true for any reasonable year', () => {
     expect(isYearSupported(2024)).toBe(true);
     expect(isYearSupported(2027)).toBe(true);
-  });
-
-  it('returns false for years outside the range', () => {
-    expect(isYearSupported(2023)).toBe(false);
-    expect(isYearSupported(2028)).toBe(false);
+    expect(isYearSupported(2023)).toBe(true);
+    expect(isYearSupported(2028)).toBe(true);
   });
 });

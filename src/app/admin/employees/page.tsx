@@ -10,9 +10,9 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listAllUsers } from '@/lib/mock/users';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listAllUsers } from '@/lib/data/users';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: '管理者',

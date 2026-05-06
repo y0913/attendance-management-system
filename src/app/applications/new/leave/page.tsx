@@ -9,9 +9,9 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { LEAVE_REASON_MAX_LENGTH } from '@/lib/mock/leave-requests';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
+import { LEAVE_REASON_MAX_LENGTH } from '@/lib/data/leave-requests';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
 import { LeaveForm } from './leave-form';
 
 const addDays = (d: Date, n: number): Date => {

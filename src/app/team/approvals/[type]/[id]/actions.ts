@@ -7,10 +7,10 @@ import {
   APPROVAL_COMMENT_MAX_LENGTH,
   recordApprovalAction,
   type ApprovalActionType,
-} from '@/lib/mock/approval-actions';
-import { decideCorrection } from '@/lib/mock/clock-corrections';
-import { decideLeave } from '@/lib/mock/leave-requests';
-import { getMockSession } from '@/lib/mock/session';
+} from '@/lib/data/approval-actions';
+import { decideCorrection } from '@/lib/data/clock-corrections';
+import { decideLeave } from '@/lib/data/leave-requests';
+import { getMockSession } from '@/lib/data/session';
 
 const DecideSchema = z.object({
   type: z.enum(['correction', 'leave']),

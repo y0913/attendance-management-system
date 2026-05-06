@@ -13,12 +13,12 @@ import {
   listCorrectionRequestsForUserDate,
   STATUS_BADGE_CLASS as CORRECTION_BADGE,
   STATUS_LABEL as CORRECTION_LABEL,
-} from '@/lib/mock/clock-corrections';
-import { getDailyNote } from '@/lib/mock/daily-notes';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listClocksForDate } from '@/lib/mock/time-clocks';
-import { findMockUserById, isManagerOf } from '@/lib/mock/users';
+} from '@/lib/data/clock-corrections';
+import { getDailyNote } from '@/lib/data/daily-notes';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listClocksForDate } from '@/lib/data/time-clocks';
+import { findMockUserById, isManagerOf } from '@/lib/data/users';
 
 const TYPE_LABEL: Record<string, string> = {
   clock_in: '出勤',

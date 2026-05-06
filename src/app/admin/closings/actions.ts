@@ -3,15 +3,15 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
-import { recordAuditLog } from '@/lib/mock/audit-logs';
+import { recordAuditLog } from '@/lib/data/audit-logs';
 import {
   closeMonth,
   deleteClosing,
   findClosing,
   findClosingById,
-} from '@/lib/mock/attendance-closings';
-import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
+} from '@/lib/data/attendance-closings';
+import { getMockSession } from '@/lib/data/session';
+import { findMockUserById, listActiveUsers } from '@/lib/data/users';
 
 const YmRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
 

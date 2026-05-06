@@ -14,22 +14,22 @@ import {
   APPROVAL_COMMENT_MAX_LENGTH,
   listApprovalActions,
   type MockApprovalAction,
-} from '@/lib/mock/approval-actions';
+} from '@/lib/data/approval-actions';
 import {
   findCorrectionById,
   STATUS_BADGE_CLASS as CORRECTION_BADGE,
   STATUS_LABEL as CORRECTION_LABEL,
   type ClockSnapshot,
-} from '@/lib/mock/clock-corrections';
+} from '@/lib/data/clock-corrections';
 import {
   findLeaveRequestById,
   LEAVE_STATUS_BADGE_CLASS,
   LEAVE_STATUS_LABEL,
   LEAVE_TYPE_LABEL,
-} from '@/lib/mock/leave-requests';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById, listAllUsers } from '@/lib/mock/users';
+} from '@/lib/data/leave-requests';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { findMockUserById, listAllUsers } from '@/lib/data/users';
 import { DecisionForm } from './decision-form';
 
 const fmtDateTime = (d: Date) =>

@@ -15,14 +15,14 @@ import {
   REASON_MAX_LENGTH,
   STATUS_BADGE_CLASS,
   STATUS_LABEL,
-} from '@/lib/mock/clock-corrections';
+} from '@/lib/data/clock-corrections';
 import {
   DAILY_NOTE_MAX_LENGTH,
   getDailyNote,
-} from '@/lib/mock/daily-notes';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listClocksForDate } from '@/lib/mock/time-clocks';
+} from '@/lib/data/daily-notes';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listClocksForDate } from '@/lib/data/time-clocks';
 import { CorrectionForm } from './correction-form';
 import { NoteForm } from './note-form';
 

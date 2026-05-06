@@ -10,17 +10,17 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
+import { getEffectiveMonthlySummary } from '@/lib/data/attendance-closings';
 import {
   currentYearMonthJst,
   shiftYearMonth,
-} from '@/lib/mock/attendance-summary';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
+} from '@/lib/data/attendance-summary';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
 import {
   listActiveUsers,
   type MockUser,
-} from '@/lib/mock/users';
+} from '@/lib/data/users';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: '管理者',

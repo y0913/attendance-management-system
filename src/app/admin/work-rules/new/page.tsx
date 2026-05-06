@@ -9,9 +9,9 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { getCurrentWorkRuleVersion } from '@/lib/mock/work-rule-versions';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { getCurrentWorkRuleVersion } from '@/lib/data/work-rule-versions';
 import { WorkRuleForm } from '../work-rule-form';
 
 const addDays = (d: Date, n: number): Date => {

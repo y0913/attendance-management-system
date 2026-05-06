@@ -11,10 +11,10 @@ import { AppHeader } from '@/components/app-header';
 import {
   currentYearMonthJst,
   shiftYearMonth,
-} from '@/lib/mock/attendance-summary';
-import { listOvertimeAlerts } from '@/lib/mock/overtime-alerts';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
+} from '@/lib/data/attendance-summary';
+import { listOvertimeAlerts } from '@/lib/data/overtime-alerts';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
 
 const isValidYm = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 

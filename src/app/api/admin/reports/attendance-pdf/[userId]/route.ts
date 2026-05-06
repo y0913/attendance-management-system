@@ -1,11 +1,11 @@
 import { renderToBuffer } from '@react-pdf/renderer';
 import type { NextRequest } from 'next/server';
 import { AttendanceMonthlyPdf } from '@/lib/pdf/attendance-monthly-pdf';
-import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
-import { currentYearMonthJst } from '@/lib/mock/attendance-summary';
-import { getCompany } from '@/lib/mock/companies';
-import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById } from '@/lib/mock/users';
+import { getEffectiveMonthlySummary } from '@/lib/data/attendance-closings';
+import { currentYearMonthJst } from '@/lib/data/attendance-summary';
+import { getCompany } from '@/lib/data/companies';
+import { getMockSession } from '@/lib/data/session';
+import { findMockUserById } from '@/lib/data/users';
 
 export const runtime = 'nodejs';
 

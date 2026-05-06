@@ -1,10 +1,10 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import type { NextRequest } from 'next/server';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
-import { currentYearMonthJst } from '@/lib/mock/attendance-summary';
-import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById } from '@/lib/mock/users';
+import { getEffectiveMonthlySummary } from '@/lib/data/attendance-closings';
+import { currentYearMonthJst } from '@/lib/data/attendance-summary';
+import { getMockSession } from '@/lib/data/session';
+import { findMockUserById } from '@/lib/data/users';
 import { csvResponse, rowsToCsv } from '@/lib/util/csv';
 
 const WEEKDAY = ['日', '月', '火', '水', '木', '金', '土'] as const;

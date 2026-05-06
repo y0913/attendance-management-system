@@ -1,6 +1,6 @@
 // Phase 3 seed: 会社 / ユーザー / 労働ルール / time-clocks / daily-notes
 //
-// 既存の `src/lib/mock/seed-*.ts` と同じ値を使い、Prisma 経由で投入する。
+// 既存の `src/lib/data/seed-*.ts` と同じ値を使い、Prisma 経由で投入する。
 // 冪等のため:
 //   - 会社・ユーザー・労働ルールは upsert
 //   - time-clocks / daily-notes は対象ユーザー分を deleteMany → 再投入
@@ -8,10 +8,10 @@
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
-import { buildSeedRecords } from '../src/lib/mock/seed-time-clocks';
-import { buildSeedNotes } from '../src/lib/mock/seed-daily-notes';
-import { buildSeedCorrections } from '../src/lib/mock/seed-clock-corrections';
-import { buildSeedLeaves } from '../src/lib/mock/seed-leave-requests';
+import { buildSeedRecords } from '../src/lib/data/seed-time-clocks';
+import { buildSeedNotes } from '../src/lib/data/seed-daily-notes';
+import { buildSeedCorrections } from '../src/lib/data/seed-clock-corrections';
+import { buildSeedLeaves } from '../src/lib/data/seed-leave-requests';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('DATABASE_URL is not set');

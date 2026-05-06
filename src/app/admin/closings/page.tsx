@@ -15,14 +15,14 @@ import {
   findClosing,
   type ClosingSnapshot,
   type MockAttendanceClosing,
-} from '@/lib/mock/attendance-closings';
+} from '@/lib/data/attendance-closings';
 import {
   currentYearMonthJst,
   shiftYearMonth,
-} from '@/lib/mock/attendance-summary';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listActiveUsers } from '@/lib/mock/users';
+} from '@/lib/data/attendance-summary';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listActiveUsers } from '@/lib/data/users';
 import {
   BulkCloseButton,
   SingleCloseButton,

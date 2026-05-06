@@ -8,8 +8,8 @@ import {
   countBusinessDaysBetween,
   LEAVE_REASON_MAX_LENGTH,
   submitLeave,
-} from '@/lib/mock/leave-requests';
-import { getMockSession } from '@/lib/mock/session';
+} from '@/lib/data/leave-requests';
+import { getMockSession } from '@/lib/data/session';
 
 const Schema = z
   .object({

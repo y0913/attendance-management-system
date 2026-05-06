@@ -6,9 +6,9 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { AppHeader } from '@/components/app-header';
-import { getCompany } from '@/lib/mock/companies';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
+import { getCompany } from '@/lib/data/companies';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
 import { SettingsForm } from './settings-form';
 
 export default async function CompanySettingsPage() {

@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { listAllUsers } from '@/lib/mock/users';
+import { listAllUsers } from '@/lib/data/users';
 import { LoginForm } from './login-form';
 
 const ROLE_LABEL: Record<string, string> = {

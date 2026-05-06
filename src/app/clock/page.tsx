@@ -7,15 +7,15 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { getMockSession } from '@/lib/mock/session';
+import { getMockSession } from '@/lib/data/session';
 import {
   getClockState,
   getLatestClockIn,
   listClocksForDate,
   type ClockState,
-} from '@/lib/mock/time-clocks';
+} from '@/lib/data/time-clocks';
 import { AppHeader } from '@/components/app-header';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
 import { ClockButtons } from './clock-buttons';
 
 const STATE_LABEL: Record<ClockState, string> = {

@@ -3,10 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
-import { recordApprovalAction } from '@/lib/mock/approval-actions';
-import { withdrawCorrection } from '@/lib/mock/clock-corrections';
-import { withdrawLeave } from '@/lib/mock/leave-requests';
-import { getMockSession } from '@/lib/mock/session';
+import { recordApprovalAction } from '@/lib/data/approval-actions';
+import { withdrawCorrection } from '@/lib/data/clock-corrections';
+import { withdrawLeave } from '@/lib/data/leave-requests';
+import { getMockSession } from '@/lib/data/session';
 
 const WithdrawSchema = z.object({
   type: z.enum(['correction', 'leave']),

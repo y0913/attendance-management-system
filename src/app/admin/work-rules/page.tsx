@@ -10,13 +10,13 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
 import {
   classifyVersionStatus,
   listWorkRuleVersions,
   type VersionStatus,
-} from '@/lib/mock/work-rule-versions';
+} from '@/lib/data/work-rule-versions';
 
 const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
 

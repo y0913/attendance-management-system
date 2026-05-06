@@ -10,16 +10,16 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
 import {
   currentYearMonthJst,
   shiftYearMonth,
   summarizeMonth,
   totalWorkMinutes,
   type DailySummary,
-} from '@/lib/mock/attendance-summary';
-import { getDailyNotesMap } from '@/lib/mock/daily-notes';
+} from '@/lib/data/attendance-summary';
+import { getDailyNotesMap } from '@/lib/data/daily-notes';
 
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'] as const;
 

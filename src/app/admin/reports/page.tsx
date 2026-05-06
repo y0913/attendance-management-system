@@ -11,10 +11,10 @@ import { AppHeader } from '@/components/app-header';
 import {
   currentYearMonthJst,
   shiftYearMonth,
-} from '@/lib/mock/attendance-summary';
-import { countPendingForApprover } from '@/lib/mock/pending-approvals';
-import { getMockSession } from '@/lib/mock/session';
-import { listActiveUsers } from '@/lib/mock/users';
+} from '@/lib/data/attendance-summary';
+import { countPendingForApprover } from '@/lib/data/pending-approvals';
+import { getMockSession } from '@/lib/data/session';
+import { listActiveUsers } from '@/lib/data/users';
 
 const isValidYm = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 
