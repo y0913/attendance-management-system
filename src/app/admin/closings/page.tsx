@@ -22,7 +22,11 @@ import {
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
 import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
-import { BulkCloseButton, SingleCloseButton } from './close-buttons';
+import {
+  BulkCloseButton,
+  SingleCloseButton,
+  UncloseButton,
+} from './close-buttons';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: '管理者',
@@ -202,9 +206,11 @@ export default async function ClosingsPage({
                         </td>
                         <td className="px-3 py-3 text-right">
                           {r.closing ? (
-                            <span className="text-xs text-muted-foreground">
-                              -
-                            </span>
+                            <UncloseButton
+                              closingId={r.closing.id}
+                              userName={r.userName}
+                              yearMonth={ym}
+                            />
                           ) : (
                             <SingleCloseButton
                               userId={r.userId}

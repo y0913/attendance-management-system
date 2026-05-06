@@ -107,6 +107,19 @@ export function listClosingsForMonth(
   return store.filter((c) => c.yearMonth === yearMonth).slice();
 }
 
+export function findClosingById(
+  id: string,
+): MockAttendanceClosing | null {
+  return store.find((c) => c.id === id) ?? null;
+}
+
+export function deleteClosing(id: string): MockAttendanceClosing | null {
+  const idx = store.findIndex((c) => c.id === id);
+  if (idx < 0) return null;
+  const [removed] = store.splice(idx, 1);
+  return removed;
+}
+
 export function closeMonth(
   userId: string,
   yearMonth: string,

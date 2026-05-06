@@ -4,7 +4,12 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { recordAuditLog } from '@/lib/mock/audit-logs';
-import { closeMonth, findClosing } from '@/lib/mock/attendance-closings';
+import {
+  closeMonth,
+  deleteClosing,
+  findClosing,
+  findClosingById,
+} from '@/lib/mock/attendance-closings';
 import { getMockSession } from '@/lib/mock/session';
 import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
 
@@ -125,4 +130,54 @@ export async function bulkCloseMonthAction(input: {
   revalidatePath('/admin/closings');
   revalidatePath('/admin/audit-logs');
   return { ok: true, data: { closedCount, skippedCount } };
+}
+
+const UncloseSchema = z.object({
+  closingId: z.string().min(1),
+});
+
+export async function uncloseAction(input: {
+  closingId: string;
+}): Promise<ActionResult<void>> {
+  const session = await getMockSession();
+  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
+  if (session.role !== 'admin') {
+    return { ok: false, error: { code: 'FORBIDDEN' } };
+  }
+
+  const parsed = UncloseSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: { code: 'VALIDATION', details: parsed.error.flatten() },
+    };
+  }
+
+  const target = findClosingById(parsed.data.closingId);
+  if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
+
+  const beforeSnap = {
+    id: target.id,
+    userId: target.userId,
+    yearMonth: target.yearMonth,
+    closedAt: target.closedAt,
+    closedById: target.closedById,
+    snapshot: target.snapshot,
+  };
+  deleteClosing(parsed.data.closingId);
+
+  recordAuditLog({
+    entityType: 'attendance_closing',
+    entityId: parsed.data.closingId,
+    action: 'delete',
+    actorId: session.id,
+    before: beforeSnap,
+    after: null,
+  });
+
+  revalidatePath('/admin/closings');
+  revalidatePath('/admin/audit-logs');
+  revalidatePath(`/team/attendance/${target.userId}`);
+  revalidatePath('/admin/attendance');
+  return { ok: true, data: undefined };
 }

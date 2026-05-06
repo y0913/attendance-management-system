@@ -23,6 +23,7 @@ export type NavKey =
   | 'admin-work-rules'
   | 'admin-company-settings'
   | 'admin-closings'
+  | 'admin-overtime-alerts'
   | 'admin-reports'
   | 'admin-audit-logs';
 
@@ -100,6 +101,11 @@ export function AppHeader({
             key: 'admin-closings',
             href: '/admin/closings',
             label: '月次締め',
+          },
+          {
+            key: 'admin-overtime-alerts',
+            href: '/admin/overtime-alerts',
+            label: '36協定',
           },
           {
             key: 'admin-reports',

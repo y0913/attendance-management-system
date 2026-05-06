@@ -19,6 +19,12 @@ import {
   LEAVE_TYPE_LABEL,
 } from '@/lib/mock/leave-requests';
 import {
+  currentYearMonthJst,
+  shiftYearMonth,
+} from '@/lib/mock/attendance-summary';
+import { findClosing } from '@/lib/mock/attendance-closings';
+import { countOvertimeAlerts } from '@/lib/mock/overtime-alerts';
+import {
   countAllPending,
   countPendingForApprover,
   listAllRecentRequests,
@@ -94,6 +100,11 @@ export default async function AdminDashboardPage() {
   const pendingCompany = countAllPending();
   const myPending = countPendingForApprover(session.id);
   const recentRows = listAllRecentRequests(8).map(itemToRow);
+  const previousYm = shiftYearMonth(currentYearMonthJst(now), -1);
+  const overtimeAlertCount = countOvertimeAlerts(previousYm);
+  const unclosedCount = allUsers.filter(
+    (u) => findClosing(u.id, previousYm) === null,
+  ).length;
 
   return (
     <div className="min-h-screen bg-muted">
@@ -179,30 +190,56 @@ export default async function AdminDashboardPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-dashed bg-muted/30">
+          <Card>
             <CardHeader className="pb-2">
-              <p className="text-xs text-muted-foreground">締め未了の月</p>
+              <p className="text-xs text-muted-foreground">締め未了</p>
+              <p className="text-[10px] text-muted-foreground">
+                先月（{previousYm}）の未締め人数
+              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                月次締め処理は未実装
+              <p
+                className={`text-3xl font-semibold ${unclosedCount > 0 ? 'text-amber-700' : ''}`}
+              >
+                {unclosedCount}
+                <span className="ml-1 text-base font-normal text-muted-foreground">
+                  名
+                </span>
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Phase 2 で `attendance_closings` を実装予定
+                <Link
+                  href={`/admin/closings?ym=${previousYm}`}
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  締め画面へ →
+                </Link>
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-dashed bg-muted/30">
+          <Card>
             <CardHeader className="pb-2">
               <p className="text-xs text-muted-foreground">36協定アラート</p>
+              <p className="text-[10px] text-muted-foreground">
+                先月（{previousYm}）の月60h超
+              </p>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-muted-foreground">
-                月60h超のアラートは未実装
+              <p
+                className={`text-3xl font-semibold ${overtimeAlertCount > 0 ? 'text-rose-700' : ''}`}
+              >
+                {overtimeAlertCount}
+                <span className="ml-1 text-base font-normal text-muted-foreground">
+                  名
+                </span>
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                月次集計の整備後に追加予定
+                <Link
+                  href={`/admin/overtime-alerts?ym=${previousYm}`}
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  詳細を確認 →
+                </Link>
               </p>
             </CardContent>
           </Card>
