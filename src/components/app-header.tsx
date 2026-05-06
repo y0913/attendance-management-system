@@ -19,7 +19,9 @@ export type NavKey =
   | 'admin-dashboard'
   | 'admin-approvals'
   | 'admin-employees'
-  | 'admin-attendance';
+  | 'admin-attendance'
+  | 'admin-work-rules'
+  | 'admin-company-settings';
 
 interface NavItem {
   key: NavKey;
@@ -80,6 +82,16 @@ export function AppHeader({
             key: 'admin-attendance',
             href: '/admin/attendance',
             label: '勤怠一覧',
+          },
+          {
+            key: 'admin-work-rules',
+            href: '/admin/work-rules',
+            label: '労働ルール',
+          },
+          {
+            key: 'admin-company-settings',
+            href: '/admin/company-settings',
+            label: '会社設定',
           },
         ]
       : [];
