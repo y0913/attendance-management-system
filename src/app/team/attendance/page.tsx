@@ -28,7 +28,7 @@ export default async function TeamAttendancePage() {
     redirect('/clock');
   }
 
-  const subordinates = findSubordinates(session.id);
+  const subordinates = await findSubordinates(session.id);
   const pendingCount = countPendingForApprover(session.id);
 
   return (

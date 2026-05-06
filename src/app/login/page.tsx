@@ -5,7 +5,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { MOCK_USERS } from '@/lib/mock/users';
+import { listAllUsers } from '@/lib/mock/users';
 import { LoginForm } from './login-form';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -14,7 +14,8 @@ const ROLE_LABEL: Record<string, string> = {
   general: '一般',
 };
 
-export default function LoginPage() {
+export default async function LoginPage() {
+  const users = await listAllUsers();
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted px-4">
       <Card className="w-full max-w-md">
@@ -27,7 +28,7 @@ export default function LoginPage() {
           <div className="rounded-md border bg-muted/50 p-4 text-sm">
             <p className="mb-2 font-medium">テストユーザー</p>
             <ul className="space-y-1 text-muted-foreground">
-              {MOCK_USERS.map((u) => (
+              {users.map((u) => (
                 <li key={u.id} className="flex items-center justify-between">
                   <span>{u.email}</span>
                   <span className="text-xs">{ROLE_LABEL[u.role]}</span>

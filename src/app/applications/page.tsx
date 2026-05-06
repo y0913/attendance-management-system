@@ -26,7 +26,7 @@ import {
 } from '@/lib/mock/leave-requests';
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById } from '@/lib/mock/users';
+import { listAllUsers } from '@/lib/mock/users';
 import { WithdrawButton } from './withdraw-button';
 
 const fmtDateTime = (d: Date) =>
@@ -74,6 +74,7 @@ const renderCorrectionDiff = (
 
 const correctionToRow = (
   r: MockClockCorrectionRequest,
+  userNameById: Map<string, string>,
 ): UnifiedRow => ({
   id: r.id,
   kind: 'correction',
@@ -95,11 +96,14 @@ const correctionToRow = (
   reason: r.reason,
   submittedAt: r.submittedAt,
   approverName: r.currentApproverId
-    ? findMockUserById(r.currentApproverId)?.name ?? '-'
+    ? userNameById.get(r.currentApproverId) ?? '-'
     : '-',
 });
 
-const leaveToRow = (r: MockLeaveRequest): UnifiedRow => ({
+const leaveToRow = (
+  r: MockLeaveRequest,
+  userNameById: Map<string, string>,
+): UnifiedRow => ({
   id: r.id,
   kind: 'leave',
   status: r.status,
@@ -128,7 +132,7 @@ const leaveToRow = (r: MockLeaveRequest): UnifiedRow => ({
   reason: r.reason,
   submittedAt: r.submittedAt,
   approverName: r.currentApproverId
-    ? findMockUserById(r.currentApproverId)?.name ?? '-'
+    ? userNameById.get(r.currentApproverId) ?? '-'
     : '-',
 });
 
@@ -136,8 +140,14 @@ export default async function ApplicationsPage() {
   const session = await getMockSession();
   if (!session) redirect('/login');
 
-  const corrections = listCorrectionRequests(session.id).map(correctionToRow);
-  const leaves = listLeaveRequests(session.id).map(leaveToRow);
+  const allUsers = await listAllUsers();
+  const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
+  const corrections = listCorrectionRequests(session.id).map((r) =>
+    correctionToRow(r, userNameById),
+  );
+  const leaves = listLeaveRequests(session.id).map((r) =>
+    leaveToRow(r, userNameById),
+  );
 
   const rows: UnifiedRow[] = [...corrections, ...leaves].sort(
     (a, b) => b.submittedAt.getTime() - a.submittedAt.getTime(),

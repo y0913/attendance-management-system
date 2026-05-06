@@ -16,7 +16,7 @@ export default async function CompanySettingsPage() {
   if (!session) redirect('/login');
   if (session.role !== 'admin') redirect('/clock');
 
-  const company = getCompany();
+  const company = await getCompany();
   const myPending = countPendingForApprover(session.id);
 
   return (

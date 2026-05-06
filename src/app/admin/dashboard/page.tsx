@@ -32,7 +32,7 @@ import {
 } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
 import { countClockStates } from '@/lib/mock/time-clocks';
-import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
+import { listActiveUsers } from '@/lib/mock/users';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
@@ -50,9 +50,11 @@ interface RecentRow {
   submittedAt: Date;
 }
 
-const itemToRow = (item: PendingItem): RecentRow => {
-  const requesterName =
-    findMockUserById(item.request.requesterId)?.name ?? '-';
+const itemToRow = (
+  item: PendingItem,
+  userNameById: Map<string, string>,
+): RecentRow => {
+  const requesterName = userNameById.get(item.request.requesterId) ?? '-';
 
   if (item.kind === 'correction') {
     const r = item.request;
@@ -94,14 +96,17 @@ export default async function AdminDashboardPage() {
   if (session.role !== 'admin') redirect('/clock');
 
   const now = new Date();
-  const allUsers = listActiveUsers();
+  const allUsers = await listActiveUsers();
+  const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
   const userIds = allUsers.map((u) => u.id);
   const clockStates = countClockStates(userIds, now);
   const pendingCompany = countAllPending();
   const myPending = countPendingForApprover(session.id);
-  const recentRows = listAllRecentRequests(8).map(itemToRow);
+  const recentRows = listAllRecentRequests(8).map((item) =>
+    itemToRow(item, userNameById),
+  );
   const previousYm = shiftYearMonth(currentYearMonthJst(now), -1);
-  const overtimeAlertCount = countOvertimeAlerts(previousYm);
+  const overtimeAlertCount = await countOvertimeAlerts(previousYm);
   const unclosedCount = allUsers.filter(
     (u) => findClosing(u.id, previousYm) === null,
   ).length;

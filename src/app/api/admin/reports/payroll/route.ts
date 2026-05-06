@@ -4,7 +4,7 @@ import { currentYearMonthJst } from '@/lib/mock/attendance-summary';
 import { getCompany } from '@/lib/mock/companies';
 import { computeMonthlyPayroll } from '@/lib/mock/payroll-bridge';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
+import { listActiveUsers } from '@/lib/mock/users';
 import { csvResponse, rowsToCsv } from '@/lib/util/csv';
 
 const ROLE_LABEL: Record<string, string> = {
@@ -39,10 +39,11 @@ export async function GET(request: NextRequest): Promise<Response> {
   const ymParam = searchParams.get('ym');
   const ym = ymParam && isValidYm(ymParam) ? ymParam : currentYearMonthJst();
 
-  const company = getCompany();
-  const users = listActiveUsers().sort((a, b) =>
+  const company = await getCompany();
+  const users = (await listActiveUsers()).sort((a, b) =>
     a.name.localeCompare(b.name, 'ja'),
   );
+  const userById = new Map(users.map((u) => [u.id, u]));
 
   const header: unknown[] = [
     '社員ID',
@@ -78,10 +79,11 @@ export async function GET(request: NextRequest): Promise<Response> {
     '法定休日×深夜割増',
     '総額',
   ];
-  const body: unknown[][] = users.map((u) => {
-    const baseSummary = getEffectiveMonthlySummary(u.id, ym);
-    const payroll = computeMonthlyPayroll(u.id, ym);
-    const manager = u.managerId ? findMockUserById(u.managerId) : null;
+  const body: unknown[][] = await Promise.all(
+    users.map(async (u): Promise<unknown[]> => {
+      const baseSummary = getEffectiveMonthlySummary(u.id, ym);
+      const payroll = await computeMonthlyPayroll(u.id, ym);
+      const manager = u.managerId ? userById.get(u.managerId) ?? null : null;
     const s = payroll.summary;
     const p = payroll.premium;
     return [
@@ -118,7 +120,8 @@ export async function GET(request: NextRequest): Promise<Response> {
       p ? fmtYen(p.legalHolidayNightPay) : '',
       p ? fmtYen(p.total) : '',
     ];
-  });
+    }),
+  );
 
   const meta: unknown[][] = [
     ['会社', company.name],

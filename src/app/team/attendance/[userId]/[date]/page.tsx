@@ -60,10 +60,10 @@ export default async function TeamAttendanceDayPage({
   const { userId, date: jstDate } = await params;
   if (!isValidDate(jstDate)) notFound();
 
-  const target = findMockUserById(userId);
+  const target = await findMockUserById(userId);
   if (!target) notFound();
 
-  if (session.role !== 'admin' && !isManagerOf(session.id, userId)) {
+  if (session.role !== 'admin' && !(await isManagerOf(session.id, userId))) {
     redirect('/team/attendance');
   }
 

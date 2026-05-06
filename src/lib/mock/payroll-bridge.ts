@@ -61,11 +61,11 @@ export interface MonthlyPayrollResult {
   premium: PremiumPayBreakdown | null;
 }
 
-export function computeMonthlyPayroll(
+export async function computeMonthlyPayroll(
   userId: string,
   yearMonth: string,
-): MonthlyPayrollResult {
-  const user = findMockUserById(userId);
+): Promise<MonthlyPayrollResult> {
+  const user = await findMockUserById(userId);
   if (!user) {
     return {
       yearMonth,
@@ -93,7 +93,7 @@ export function computeMonthlyPayroll(
   const rule = toCalcWorkRuleVersion(currentRule);
   const allRules = listWorkRuleVersions().map(toCalcWorkRuleVersion);
 
-  const company = getCompany();
+  const company = await getCompany();
 
   const dailyAttendances: DailyAttendance[] = days.map((dayDate) => {
     const clocks = listClocksForDate(userId, dayDate);

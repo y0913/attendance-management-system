@@ -12,7 +12,7 @@ import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById, listAllUsers } from '@/lib/mock/users';
+import { listAllUsers } from '@/lib/mock/users';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: '管理者',
@@ -43,7 +43,8 @@ export default async function EmployeesPage({
 
   const sp = await searchParams;
   const showInactive = sp.show === 'all';
-  const allUsers = listAllUsers();
+  const allUsers = await listAllUsers();
+  const userById = new Map(allUsers.map((u) => [u.id, u]));
   const visible = showInactive
     ? allUsers
     : allUsers.filter((u) => u.deactivatedAt === null);
@@ -106,7 +107,7 @@ export default async function EmployeesPage({
                   {visible.map((u) => {
                     const inactive = u.deactivatedAt !== null;
                     const manager = u.managerId
-                      ? findMockUserById(u.managerId)
+                      ? userById.get(u.managerId) ?? null
                       : null;
                     return (
                       <tr

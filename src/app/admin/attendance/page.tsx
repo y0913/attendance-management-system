@@ -18,7 +18,6 @@ import {
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
 import {
-  findMockUserById,
   listActiveUsers,
   type MockUser,
 } from '@/lib/mock/users';
@@ -85,7 +84,8 @@ export default async function AdminAttendancePage({
   const roleFilter = sp.role && isRole(sp.role) ? sp.role : null;
   const managerFilter = sp.manager ?? null;
 
-  const users = listActiveUsers();
+  const users = await listActiveUsers();
+  const userById = new Map(users.map((u) => [u.id, u]));
   const filtered = users
     .filter((u) => (roleFilter ? u.role === roleFilter : true))
     .filter((u) => {
@@ -252,7 +252,7 @@ export default async function AdminAttendancePage({
                   <tbody>
                     {rows.map((r) => {
                       const manager = r.user.managerId
-                        ? findMockUserById(r.user.managerId)
+                        ? userById.get(r.user.managerId) ?? null
                         : null;
                       return (
                         <tr

@@ -96,7 +96,7 @@ export async function submitCorrectionAction(input: {
     breakEnd: blank(parsed.data.breakEnd),
   };
 
-  const req = submitCorrection({
+  const req = await submitCorrection({
     requesterId: session.id,
     targetDate: parsed.data.jstDate,
     reason: parsed.data.reason,

@@ -25,7 +25,7 @@ import {
   type PendingItem,
 } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById } from '@/lib/mock/users';
+import { listAllUsers } from '@/lib/mock/users';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
@@ -71,9 +71,11 @@ interface InboxRow {
   submittedAt: Date;
 }
 
-const itemToRow = (item: PendingItem): InboxRow => {
-  const requesterName =
-    findMockUserById(item.request.requesterId)?.name ?? '-';
+const itemToRow = (
+  item: PendingItem,
+  userNameById: Map<string, string>,
+): InboxRow => {
+  const requesterName = userNameById.get(item.request.requesterId) ?? '-';
 
   if (item.kind === 'correction') {
     const r = item.request;
@@ -135,7 +137,9 @@ export default async function TeamApprovalsPage() {
   }
 
   const items = listPendingForApprover(session.id);
-  const rows = items.map(itemToRow);
+  const allUsers = await listAllUsers();
+  const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
+  const rows = items.map((item) => itemToRow(item, userNameById));
   const pendingCount = countPendingForApprover(session.id);
 
   return (

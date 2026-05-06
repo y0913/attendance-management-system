@@ -1,4 +1,8 @@
-import type { EmploymentType, Role } from '@prisma/client';
+// Phase 2: 内部を Prisma 経由に書き換え。API 形は維持しつつ async 化。
+// 旧 mock 配列・ensureSeeded は廃止し、seed は prisma/seed.ts へ移動済み。
+
+import type { EmploymentType, Role, User } from '@prisma/client';
+import { prisma } from '@/lib/db';
 
 export interface MockUser {
   id: string;
@@ -12,69 +16,57 @@ export interface MockUser {
   deactivatedAt: Date | null;
 }
 
-const store: MockUser[] = [
-  {
-    id: 'u_admin',
-    email: 'admin@example.com',
-    name: '管理 太郎',
-    role: 'admin',
-    managerId: null,
-    employmentType: 'monthly',
-    hiredAt: new Date('2018-04-01T00:00:00+09:00'),
-    baseSalary: 600000,
-    deactivatedAt: null,
-  },
-  {
-    id: 'u_approver',
-    email: 'approver@example.com',
-    name: '承認 花子',
-    role: 'approver',
-    managerId: 'u_admin',
-    employmentType: 'monthly',
-    hiredAt: new Date('2021-04-01T00:00:00+09:00'),
-    baseSalary: 450000,
-    deactivatedAt: null,
-  },
-  {
-    id: 'u_general',
-    email: 'general@example.com',
-    name: '一般 次郎',
-    role: 'general',
-    managerId: 'u_approver',
-    employmentType: 'monthly',
-    hiredAt: new Date('2023-10-01T00:00:00+09:00'),
-    baseSalary: 300000,
-    deactivatedAt: null,
-  },
-];
+const COMPANY_ID = 'co_default';
 
-export const MOCK_USERS: readonly MockUser[] = store;
+const toMockUser = (u: User): MockUser => ({
+  id: u.id,
+  email: u.email,
+  name: u.name ?? '',
+  role: u.role,
+  managerId: u.managerId,
+  employmentType: u.employmentType,
+  hiredAt: u.hiredAt ?? new Date(0),
+  baseSalary: u.baseSalary,
+  deactivatedAt: u.deactivatedAt,
+});
 
-export function findMockUserByEmail(email: string): MockUser | null {
-  return store.find((u) => u.email === email) ?? null;
+export async function findMockUserByEmail(
+  email: string,
+): Promise<MockUser | null> {
+  const u = await prisma.user.findUnique({ where: { email } });
+  return u ? toMockUser(u) : null;
 }
 
-export function findMockUserById(id: string): MockUser | null {
-  return store.find((u) => u.id === id) ?? null;
+export async function findMockUserById(id: string): Promise<MockUser | null> {
+  const u = await prisma.user.findUnique({ where: { id } });
+  return u ? toMockUser(u) : null;
 }
 
-export function findSubordinates(managerId: string): MockUser[] {
-  return store.filter(
-    (u) => u.managerId === managerId && u.deactivatedAt === null,
-  );
+export async function findSubordinates(managerId: string): Promise<MockUser[]> {
+  const users = await prisma.user.findMany({
+    where: { managerId, deactivatedAt: null },
+  });
+  return users.map(toMockUser);
 }
 
-export function isManagerOf(managerId: string, userId: string): boolean {
-  const target = findMockUserById(userId);
+export async function isManagerOf(
+  managerId: string,
+  userId: string,
+): Promise<boolean> {
+  const target = await findMockUserById(userId);
   return target?.managerId === managerId;
 }
 
-export function listActiveUsers(): MockUser[] {
-  return store.filter((u) => u.deactivatedAt === null);
+export async function listActiveUsers(): Promise<MockUser[]> {
+  const users = await prisma.user.findMany({
+    where: { deactivatedAt: null },
+  });
+  return users.map(toMockUser);
 }
 
-export function listAllUsers(): MockUser[] {
-  return store.slice();
+export async function listAllUsers(): Promise<MockUser[]> {
+  const users = await prisma.user.findMany();
+  return users.map(toMockUser);
 }
 
 export interface CreateUserInput {
@@ -87,20 +79,22 @@ export interface CreateUserInput {
   baseSalary: number | null;
 }
 
-export function createMockUser(input: CreateUserInput): MockUser {
-  const user: MockUser = {
-    id: `u_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-    email: input.email,
-    name: input.name,
-    role: input.role,
-    managerId: input.managerId,
-    employmentType: input.employmentType,
-    hiredAt: input.hiredAt,
-    baseSalary: input.baseSalary,
-    deactivatedAt: null,
-  };
-  store.push(user);
-  return user;
+export async function createMockUser(
+  input: CreateUserInput,
+): Promise<MockUser> {
+  const user = await prisma.user.create({
+    data: {
+      email: input.email,
+      name: input.name,
+      companyId: COMPANY_ID,
+      role: input.role,
+      managerId: input.managerId,
+      employmentType: input.employmentType,
+      hiredAt: input.hiredAt,
+      baseSalary: input.baseSalary,
+    },
+  });
+  return toMockUser(user);
 }
 
 export interface UpdateUserInput {
@@ -113,30 +107,49 @@ export interface UpdateUserInput {
   baseSalary?: number | null;
 }
 
-export function updateMockUser(id: string, input: UpdateUserInput): MockUser | null {
-  const user = store.find((u) => u.id === id);
-  if (!user) return null;
-  if (input.email !== undefined) user.email = input.email;
-  if (input.name !== undefined) user.name = input.name;
-  if (input.role !== undefined) user.role = input.role;
-  if (input.managerId !== undefined) user.managerId = input.managerId;
-  if (input.employmentType !== undefined)
-    user.employmentType = input.employmentType;
-  if (input.hiredAt !== undefined) user.hiredAt = input.hiredAt;
-  if (input.baseSalary !== undefined) user.baseSalary = input.baseSalary;
-  return user;
+export async function updateMockUser(
+  id: string,
+  input: UpdateUserInput,
+): Promise<MockUser | null> {
+  try {
+    const user = await prisma.user.update({
+      where: { id },
+      data: {
+        email: input.email,
+        name: input.name,
+        role: input.role,
+        managerId: input.managerId,
+        employmentType: input.employmentType,
+        hiredAt: input.hiredAt,
+        baseSalary: input.baseSalary,
+      },
+    });
+    return toMockUser(user);
+  } catch {
+    return null;
+  }
 }
 
-export function setUserDeactivation(
+export async function setUserDeactivation(
   id: string,
   deactivatedAt: Date | null,
-): MockUser | null {
-  const user = store.find((u) => u.id === id);
-  if (!user) return null;
-  user.deactivatedAt = deactivatedAt;
-  return user;
+): Promise<MockUser | null> {
+  try {
+    const user = await prisma.user.update({
+      where: { id },
+      data: { deactivatedAt },
+    });
+    return toMockUser(user);
+  } catch {
+    return null;
+  }
 }
 
-export function isEmailTaken(email: string, exceptId?: string): boolean {
-  return store.some((u) => u.email === email && u.id !== exceptId);
+export async function isEmailTaken(
+  email: string,
+  exceptId?: string,
+): Promise<boolean> {
+  const u = await prisma.user.findUnique({ where: { email } });
+  if (!u) return false;
+  return u.id !== exceptId;
 }

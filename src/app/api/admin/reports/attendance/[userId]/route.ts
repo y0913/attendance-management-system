@@ -37,7 +37,7 @@ export async function GET(
   }
 
   const { userId } = await context.params;
-  const target = findMockUserById(userId);
+  const target = await findMockUserById(userId);
   if (!target) return new Response('Not Found', { status: 404 });
 
   const { searchParams } = new URL(request.url);

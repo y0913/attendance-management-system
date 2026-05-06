@@ -22,7 +22,7 @@ export default async function LeaveBalancePage() {
   if (!session) redirect('/login');
 
   const asOf = new Date();
-  const balance = getUserLeaveBalance(session.id, asOf);
+  const balance = await getUserLeaveBalance(session.id, asOf);
   if (!balance) redirect('/login');
 
   const tenureMonths = Math.floor(

@@ -21,7 +21,7 @@ import {
 } from '@/lib/mock/attendance-summary';
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
+import { listActiveUsers } from '@/lib/mock/users';
 import {
   BulkCloseButton,
   SingleCloseButton,
@@ -75,9 +75,10 @@ export default async function ClosingsPage({
   const sp = await searchParams;
   const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : previousYearMonth();
 
-  const users = listActiveUsers().sort((a, b) =>
+  const users = (await listActiveUsers()).sort((a, b) =>
     a.name.localeCompare(b.name, 'ja'),
   );
+  const userNameById = new Map(users.map((u) => [u.id, u.name]));
   const rows: UserRow[] = users.map((u) => ({
     userId: u.id,
     userName: u.name,
@@ -155,8 +156,8 @@ export default async function ClosingsPage({
                     const data = r.closing
                       ? r.closing.snapshot
                       : r.preview;
-                    const closedBy = r.closing
-                      ? findMockUserById(r.closing.closedById)
+                    const closedByName = r.closing
+                      ? userNameById.get(r.closing.closedById) ?? '-'
                       : null;
                     return (
                       <tr
@@ -194,7 +195,7 @@ export default async function ClosingsPage({
                             >
                               <span>締め済み</span>
                               <span className="font-normal text-[10px] text-indigo-700">
-                                {closedBy?.name ?? '-'} ・{' '}
+                                {closedByName ?? '-'} ・{' '}
                                 {fmtDateTime(r.closing.closedAt)}
                               </span>
                             </span>

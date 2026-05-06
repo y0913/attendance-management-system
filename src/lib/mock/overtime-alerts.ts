@@ -11,8 +11,10 @@ export interface OvertimeAlertItem {
   isClosed: boolean;
 }
 
-export function listOvertimeAlerts(yearMonth: string): OvertimeAlertItem[] {
-  const users = listActiveUsers();
+export async function listOvertimeAlerts(
+  yearMonth: string,
+): Promise<OvertimeAlertItem[]> {
+  const users = await listActiveUsers();
   return users
     .map((user) => {
       const summary = getEffectiveMonthlySummary(user.id, yearMonth);
@@ -20,9 +22,12 @@ export function listOvertimeAlerts(yearMonth: string): OvertimeAlertItem[] {
       return { user, estimate, isClosed: summary.isClosed };
     })
     .filter((item) => item.estimate.exceedsThreshold)
-    .sort((a, b) => b.estimate.estimatedOtMinutes - a.estimate.estimatedOtMinutes);
+    .sort(
+      (a, b) =>
+        b.estimate.estimatedOtMinutes - a.estimate.estimatedOtMinutes,
+    );
 }
 
-export function countOvertimeAlerts(yearMonth: string): number {
-  return listOvertimeAlerts(yearMonth).length;
+export async function countOvertimeAlerts(yearMonth: string): Promise<number> {
+  return (await listOvertimeAlerts(yearMonth)).length;
 }

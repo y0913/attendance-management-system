@@ -64,10 +64,10 @@ export default async function TeamAttendanceUserPage({
   }
 
   const { userId } = await params;
-  const target = findMockUserById(userId);
+  const target = await findMockUserById(userId);
   if (!target) notFound();
 
-  if (session.role !== 'admin' && !isManagerOf(session.id, userId)) {
+  if (session.role !== 'admin' && !(await isManagerOf(session.id, userId))) {
     redirect('/team/attendance');
   }
 
@@ -80,7 +80,7 @@ export default async function TeamAttendanceUserPage({
     summary.daily.map((d) => d.date),
   );
   const closedBy = summary.closedById
-    ? findMockUserById(summary.closedById)
+    ? await findMockUserById(summary.closedById)
     : null;
   const pendingCount = countPendingForApprover(session.id);
 

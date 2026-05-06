@@ -22,14 +22,14 @@ export async function GET(
   }
 
   const { userId } = await context.params;
-  const target = findMockUserById(userId);
+  const target = await findMockUserById(userId);
   if (!target) return new Response('Not Found', { status: 404 });
 
   const { searchParams } = new URL(request.url);
   const ymParam = searchParams.get('ym');
   const ym = ymParam && isValidYm(ymParam) ? ymParam : currentYearMonthJst();
 
-  const company = getCompany();
+  const company = await getCompany();
   const summary = getEffectiveMonthlySummary(target.id, ym);
 
   const buffer = await renderToBuffer(

@@ -28,7 +28,7 @@ export async function signInAction(
     };
   }
 
-  const user = findMockUserByEmail(parsed.data.email);
+  const user = await findMockUserByEmail(parsed.data.email);
   if (!user) {
     return { ok: false, error: { code: 'NOT_FOUND' } };
   }

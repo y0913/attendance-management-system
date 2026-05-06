@@ -47,8 +47,8 @@ export async function updateCompanySettingsAction(input: {
     };
   }
 
-  const before = getCompany();
-  const after = updateCompany({
+  const before = await getCompany();
+  const after = await updateCompany({
     name: parsed.data.name.trim(),
     closingDay: parsed.data.closingDay,
     midMonthRateChangeStrategy: parsed.data.midMonthRateChangeStrategy,

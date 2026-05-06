@@ -8,7 +8,7 @@ export async function getMockSession(): Promise<MockUser | null> {
   const store = await cookies();
   const id = store.get(COOKIE_NAME)?.value;
   if (!id) return null;
-  return findMockUserById(id);
+  return await findMockUserById(id);
 }
 
 export async function setMockSession(userId: string): Promise<void> {

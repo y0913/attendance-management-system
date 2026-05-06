@@ -153,11 +153,11 @@ export interface SubmitCorrectionInput {
   after: ClockSnapshot;
 }
 
-export function submitCorrection(
+export async function submitCorrection(
   input: SubmitCorrectionInput,
-): MockClockCorrectionRequest {
+): Promise<MockClockCorrectionRequest> {
   ensureSeeded();
-  const requester = findMockUserById(input.requesterId);
+  const requester = await findMockUserById(input.requesterId);
   const approverId = requester?.managerId ?? null;
   const req: MockClockCorrectionRequest = {
     id: `ccr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,

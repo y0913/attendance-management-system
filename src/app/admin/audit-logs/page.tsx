@@ -20,7 +20,7 @@ import {
 } from '@/lib/mock/audit-logs';
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById, listAllUsers } from '@/lib/mock/users';
+import { listAllUsers } from '@/lib/mock/users';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm:ss');
@@ -62,7 +62,8 @@ export default async function AuditLogsPage({
     limit: 200,
   });
   const myPending = countPendingForApprover(session.id);
-  const allUsers = listAllUsers();
+  const allUsers = await listAllUsers();
+  const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 
   const buildHref = (overrides: {
     entity?: AuditEntityType | null;
@@ -160,7 +161,11 @@ export default async function AuditLogsPage({
             ) : (
               <ul className="flex flex-col gap-3">
                 {logs.map((l) => (
-                  <AuditLogRow key={l.id} log={l} />
+                  <AuditLogRow
+                    key={l.id}
+                    log={l}
+                    userNameById={userNameById}
+                  />
                 ))}
               </ul>
             )}
@@ -171,8 +176,14 @@ export default async function AuditLogsPage({
   );
 }
 
-function AuditLogRow({ log }: { log: MockAuditLog }) {
-  const actor = findMockUserById(log.actorId);
+function AuditLogRow({
+  log,
+  userNameById,
+}: {
+  log: MockAuditLog;
+  userNameById: Map<string, string>;
+}) {
+  const actorName = userNameById.get(log.actorId) ?? log.actorId;
   const actionAsKey = log.action as AuditAction;
   return (
     <li className="rounded-md border bg-background p-3 text-sm">
@@ -189,7 +200,7 @@ function AuditLogRow({ log }: { log: MockAuditLog }) {
           {log.entityId}
         </span>
         <span className="ml-auto text-xs text-muted-foreground">
-          {actor?.name ?? log.actorId} ・ {fmtDateTime(log.createdAt)}
+          {actorName} ・ {fmtDateTime(log.createdAt)}
         </span>
       </div>
       <details className="mt-2">

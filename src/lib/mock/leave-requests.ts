@@ -109,12 +109,14 @@ export type SubmitLeaveResult =
   | { ok: true; request: MockLeaveRequest }
   | { ok: false; reason: 'HALF_DAY_REQUIRES_SINGLE_DATE' };
 
-export function submitLeave(input: SubmitLeaveInput): SubmitLeaveResult {
+export async function submitLeave(
+  input: SubmitLeaveInput,
+): Promise<SubmitLeaveResult> {
   ensureSeeded();
   if (input.dayUnit === 'half' && input.startDate !== input.endDate) {
     return { ok: false, reason: 'HALF_DAY_REQUIRES_SINGLE_DATE' };
   }
-  const requester = findMockUserById(input.requesterId);
+  const requester = await findMockUserById(input.requesterId);
   const approverId = requester?.managerId ?? null;
   const days =
     input.dayUnit === 'half'

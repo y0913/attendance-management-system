@@ -42,7 +42,7 @@ export async function closeMonthAction(input: {
     };
   }
 
-  const target = findMockUserById(parsed.data.userId);
+  const target = await findMockUserById(parsed.data.userId);
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
   if (findClosing(parsed.data.userId, parsed.data.yearMonth)) {
@@ -103,7 +103,7 @@ export async function bulkCloseMonthAction(input: {
   const ym = parsed.data.yearMonth;
   let closedCount = 0;
   let skippedCount = 0;
-  for (const u of listActiveUsers()) {
+  for (const u of await listActiveUsers()) {
     if (findClosing(u.id, ym)) {
       skippedCount += 1;
       continue;

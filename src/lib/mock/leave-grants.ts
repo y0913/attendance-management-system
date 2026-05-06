@@ -20,11 +20,11 @@ export interface UserLeaveBalance {
   nextGrant: LegalGrant | null;
 }
 
-export function getUserLeaveBalance(
+export async function getUserLeaveBalance(
   userId: string,
   asOf: Date = new Date(),
-): UserLeaveBalance | null {
-  const user = findMockUserById(userId);
+): Promise<UserLeaveBalance | null> {
+  const user = await findMockUserById(userId);
   if (!user) return null;
 
   const grants = computeLegalGrants(user.hiredAt, asOf);

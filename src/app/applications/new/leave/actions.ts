@@ -72,7 +72,7 @@ export async function submitLeaveAction(input: {
     }
   }
 
-  const result = submitLeave({
+  const result = await submitLeave({
     requesterId: session.id,
     leaveType: 'paid',
     dayUnit: parsed.data.dayUnit,

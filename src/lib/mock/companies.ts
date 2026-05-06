@@ -1,29 +1,49 @@
-import type { MidMonthRateChangeStrategy } from '@prisma/client';
+// Phase 2: 内部を Prisma 経由に書き換え。API 形は維持しつつ async 化。
+//
+// マルチテナント化は将来課題。骨組み段階では会社1社のみ前提で `co_default` 固定。
+
+import type { Company, MidMonthRateChangeStrategy } from '@prisma/client';
+import { prisma } from '@/lib/db';
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=日曜
 
 export interface MockCompany {
   id: string;
   name: string;
-  closingDay: number; // 1-31, 0=月末
+  closingDay: number;
   midMonthRateChangeStrategy: MidMonthRateChangeStrategy;
-  monthlyStandardHours: number; // 月所定労働時間（時給単価計算用）
-  legalHolidayWeekday: Weekday; // 法定休日の曜日（一般的に日曜）
+  monthlyStandardHours: number;
+  legalHolidayWeekday: Weekday;
 }
 
 const DEFAULT_COMPANY_ID = 'co_default';
 
-const store: MockCompany = {
-  id: DEFAULT_COMPANY_ID,
-  name: 'サンプル株式会社',
-  closingDay: 0,
-  midMonthRateChangeStrategy: 'month_end',
+// 暫定: monthlyStandardHours / legalHolidayWeekday は Prisma スキーマにまだ無いので
+// プロセス内オーバーライドで保持する。スキーマ拡張時にマイグレーションで列追加する想定。
+const overrides: { monthlyStandardHours: number; legalHolidayWeekday: Weekday } = {
   monthlyStandardHours: 176,
   legalHolidayWeekday: 0,
 };
 
-export function getCompany(): MockCompany {
-  return { ...store };
+const toMockCompany = (c: Company): MockCompany => ({
+  id: c.id,
+  name: c.name,
+  closingDay: c.closingDay,
+  midMonthRateChangeStrategy: c.midMonthRateChangeStrategy,
+  monthlyStandardHours: overrides.monthlyStandardHours,
+  legalHolidayWeekday: overrides.legalHolidayWeekday,
+});
+
+export async function getCompany(): Promise<MockCompany> {
+  const c = await prisma.company.findUnique({
+    where: { id: DEFAULT_COMPANY_ID },
+  });
+  if (!c) {
+    throw new Error(
+      `Default company (${DEFAULT_COMPANY_ID}) not found. Run \`npx prisma db seed\`.`,
+    );
+  }
+  return toMockCompany(c);
 }
 
 export interface UpdateCompanyInput {
@@ -34,19 +54,24 @@ export interface UpdateCompanyInput {
   legalHolidayWeekday?: Weekday;
 }
 
-export function updateCompany(input: UpdateCompanyInput): MockCompany {
-  if (input.name !== undefined) store.name = input.name;
-  if (input.closingDay !== undefined) store.closingDay = input.closingDay;
-  if (input.midMonthRateChangeStrategy !== undefined) {
-    store.midMonthRateChangeStrategy = input.midMonthRateChangeStrategy;
-  }
+export async function updateCompany(
+  input: UpdateCompanyInput,
+): Promise<MockCompany> {
   if (input.monthlyStandardHours !== undefined) {
-    store.monthlyStandardHours = input.monthlyStandardHours;
+    overrides.monthlyStandardHours = input.monthlyStandardHours;
   }
   if (input.legalHolidayWeekday !== undefined) {
-    store.legalHolidayWeekday = input.legalHolidayWeekday;
+    overrides.legalHolidayWeekday = input.legalHolidayWeekday;
   }
-  return { ...store };
+  const updated = await prisma.company.update({
+    where: { id: DEFAULT_COMPANY_ID },
+    data: {
+      name: input.name,
+      closingDay: input.closingDay,
+      midMonthRateChangeStrategy: input.midMonthRateChangeStrategy,
+    },
+  });
+  return toMockCompany(updated);
 }
 
 export const CLOSING_DAY_LABEL = (n: number): string =>

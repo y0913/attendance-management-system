@@ -83,14 +83,14 @@ export async function upsertEmployeeAction(
     };
   }
 
-  if (data.managerId !== null && !findMockUserById(data.managerId)) {
+  if (data.managerId !== null && !(await findMockUserById(data.managerId))) {
     return {
       ok: false,
       error: { code: 'VALIDATION', details: { managerId: '存在しないユーザー' } },
     };
   }
 
-  if (isEmailTaken(data.email, data.id)) {
+  if (await isEmailTaken(data.email, data.id)) {
     return {
       ok: false,
       error: { code: 'CONFLICT', message: 'メールアドレスが既に使われています' },
@@ -100,10 +100,10 @@ export async function upsertEmployeeAction(
   const hiredAt = toJstStartOfDay(data.hiredAt);
 
   if (data.id) {
-    const target = findMockUserById(data.id);
+    const target = await findMockUserById(data.id);
     if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
     const beforeSnap = { ...target };
-    const updated = updateMockUser(data.id, {
+    const updated = await updateMockUser(data.id, {
       name: data.name,
       email: data.email,
       role: data.role,
@@ -126,7 +126,7 @@ export async function upsertEmployeeAction(
     return { ok: true, data: { id: data.id } };
   }
 
-  const created = createMockUser({
+  const created = await createMockUser({
     name: data.name,
     email: data.email,
     role: data.role,
@@ -176,11 +176,11 @@ export async function setEmployeeDeactivationAction(input: {
     };
   }
 
-  const target = findMockUserById(parsed.data.id);
+  const target = await findMockUserById(parsed.data.id);
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
   const beforeSnap = { ...target };
-  const updated = setUserDeactivation(
+  const updated = await setUserDeactivation(
     parsed.data.id,
     parsed.data.deactivate ? new Date() : null,
   );

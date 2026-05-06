@@ -26,7 +26,7 @@ import {
   type PendingItem,
 } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById } from '@/lib/mock/users';
+import { listAllUsers } from '@/lib/mock/users';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
@@ -73,11 +73,13 @@ interface InboxRow {
   submittedAt: Date;
 }
 
-const itemToRow = (item: PendingItem): InboxRow => {
-  const requesterName =
-    findMockUserById(item.request.requesterId)?.name ?? '-';
+const itemToRow = (
+  item: PendingItem,
+  userNameById: Map<string, string>,
+): InboxRow => {
+  const requesterName = userNameById.get(item.request.requesterId) ?? '-';
   const approverName = item.request.currentApproverId
-    ? findMockUserById(item.request.currentApproverId)?.name ?? '-'
+    ? userNameById.get(item.request.currentApproverId) ?? '-'
     : '-';
 
   if (item.kind === 'correction') {
@@ -140,7 +142,9 @@ export default async function AdminApprovalsPage() {
   if (session.role !== 'admin') redirect('/clock');
 
   const items = listAllPending();
-  const rows = items.map(itemToRow);
+  const allUsers = await listAllUsers();
+  const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
+  const rows = items.map((item) => itemToRow(item, userNameById));
   const totalPending = countAllPending();
   const myPending = countPendingForApprover(session.id);
 

@@ -29,7 +29,7 @@ import {
 } from '@/lib/mock/leave-requests';
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
-import { findMockUserById } from '@/lib/mock/users';
+import { findMockUserById, listAllUsers } from '@/lib/mock/users';
 import { DecisionForm } from './decision-form';
 
 const fmtDateTime = (d: Date) =>
@@ -78,7 +78,13 @@ const SnapshotTable = ({
   </table>
 );
 
-const ApprovalHistory = ({ actions }: { actions: MockApprovalAction[] }) => {
+const ApprovalHistory = ({
+  actions,
+  userNameById,
+}: {
+  actions: MockApprovalAction[];
+  userNameById: Map<string, string>;
+}) => {
   if (actions.length === 0) {
     return (
       <p className="text-sm text-muted-foreground">承認履歴はまだありません</p>
@@ -87,14 +93,14 @@ const ApprovalHistory = ({ actions }: { actions: MockApprovalAction[] }) => {
   return (
     <ul className="flex flex-col gap-3">
       {actions.map((a) => {
-        const actor = findMockUserById(a.actorId);
+        const actorName = userNameById.get(a.actorId) ?? a.actorId;
         return (
           <li key={a.id} className="rounded-md border bg-muted/30 p-3 text-sm">
             <div className="flex items-center justify-between gap-3">
               <span className="font-medium">
                 {APPROVAL_ACTION_LABEL[a.action]}
                 <span className="ml-2 text-xs text-muted-foreground">
-                  by {actor?.name ?? a.actorId}
+                  by {actorName}
                 </span>
               </span>
               <span className="font-mono text-xs text-muted-foreground">
@@ -128,6 +134,8 @@ export default async function ApprovalDetailPage({
   if (!isValidType(type)) notFound();
 
   const pendingCount = countPendingForApprover(session.id);
+  const allUsers = await listAllUsers();
+  const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 
   if (type === 'correction') {
     const r = findCorrectionById(id);
@@ -135,7 +143,7 @@ export default async function ApprovalDetailPage({
     if (session.role !== 'admin' && r.currentApproverId !== session.id) {
       redirect('/team/approvals');
     }
-    const requester = findMockUserById(r.requesterId);
+    const requester = await findMockUserById(r.requesterId);
     const history = listApprovalActions('correction', r.id);
     const isPending = r.status === 'submitted';
 
@@ -217,7 +225,10 @@ export default async function ApprovalDetailPage({
                   <p className="text-xs text-muted-foreground">
                     アクション履歴
                   </p>
-                  <ApprovalHistory actions={history} />
+                  <ApprovalHistory
+                    actions={history}
+                    userNameById={userNameById}
+                  />
                 </div>
               )}
             </CardContent>
@@ -233,7 +244,7 @@ export default async function ApprovalDetailPage({
   if (session.role !== 'admin' && r.currentApproverId !== session.id) {
     redirect('/team/approvals');
   }
-  const requester = findMockUserById(r.requesterId);
+  const requester = await findMockUserById(r.requesterId);
   const history = listApprovalActions('leave', r.id);
   const isPending = r.status === 'submitted';
 
@@ -322,7 +333,10 @@ export default async function ApprovalDetailPage({
             {history.length > 0 && (
               <div className="flex flex-col gap-2 border-t pt-4">
                 <p className="text-xs text-muted-foreground">アクション履歴</p>
-                <ApprovalHistory actions={history} />
+                <ApprovalHistory
+                  actions={history}
+                  userNameById={userNameById}
+                />
               </div>
             )}
           </CardContent>
