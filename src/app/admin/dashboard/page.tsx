@@ -125,10 +125,10 @@ export default async function AdminDashboardPage() {
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 <Link
-                  href="/team/approvals"
+                  href="/admin/approvals"
                   className="text-primary underline-offset-4 hover:underline"
                 >
-                  承認画面で対応 →
+                  全社の承認画面へ →
                 </Link>
               </p>
             </CardContent>

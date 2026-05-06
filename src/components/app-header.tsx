@@ -16,7 +16,8 @@ export type NavKey =
   | 'leave-balance'
   | 'team-attendance'
   | 'team-approvals'
-  | 'admin-dashboard';
+  | 'admin-dashboard'
+  | 'admin-approvals';
 
 interface NavItem {
   key: NavKey;
@@ -62,6 +63,11 @@ export function AppHeader({
             key: 'admin-dashboard',
             href: '/admin/dashboard',
             label: 'ダッシュボード',
+          },
+          {
+            key: 'admin-approvals',
+            href: '/admin/approvals',
+            label: '全社の承認',
           },
         ]
       : [];
