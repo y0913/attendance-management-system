@@ -153,3 +153,40 @@ export function getLatestClockIn(
   }
   return null;
 }
+
+export interface ClockStateCount {
+  notClockedIn: number;
+  working: number;
+  onBreak: number;
+  clockedOut: number;
+}
+
+export function countClockStates(
+  userIds: string[],
+  date: Date = new Date(),
+): ClockStateCount {
+  const acc: ClockStateCount = {
+    notClockedIn: 0,
+    working: 0,
+    onBreak: 0,
+    clockedOut: 0,
+  };
+  for (const userId of userIds) {
+    const state = getClockState(userId, date);
+    switch (state) {
+      case 'not_clocked_in':
+        acc.notClockedIn += 1;
+        break;
+      case 'working':
+        acc.working += 1;
+        break;
+      case 'on_break':
+        acc.onBreak += 1;
+        break;
+      case 'clocked_out':
+        acc.clockedOut += 1;
+        break;
+    }
+  }
+  return acc;
+}

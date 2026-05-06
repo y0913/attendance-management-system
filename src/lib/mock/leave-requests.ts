@@ -78,6 +78,21 @@ export function listPendingLeavesForApprover(
     .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
 }
 
+export function listAllPendingLeaves(): MockLeaveRequest[] {
+  ensureSeeded();
+  return store
+    .filter((r) => r.status === 'submitted')
+    .slice()
+    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+}
+
+export function listAllLeaves(): MockLeaveRequest[] {
+  ensureSeeded();
+  return store
+    .slice()
+    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+}
+
 export interface SubmitLeaveInput {
   requesterId: string;
   leaveType: LeaveType;

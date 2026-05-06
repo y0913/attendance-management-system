@@ -15,7 +15,8 @@ export type NavKey =
   | 'applications'
   | 'leave-balance'
   | 'team-attendance'
-  | 'team-approvals';
+  | 'team-approvals'
+  | 'admin-dashboard';
 
 interface NavItem {
   key: NavKey;
@@ -54,7 +55,17 @@ export function AppHeader({
         },
       ]
     : [];
-  const items = [...PERSONAL_NAV, ...teamNav];
+  const adminNav: NavItem[] =
+    user.role === 'admin'
+      ? [
+          {
+            key: 'admin-dashboard',
+            href: '/admin/dashboard',
+            label: 'ダッシュボード',
+          },
+        ]
+      : [];
+  const items = [...PERSONAL_NAV, ...teamNav, ...adminNav];
 
   return (
     <header className="border-b bg-background">

@@ -100,6 +100,21 @@ export function listPendingCorrectionsForApprover(
     .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
 }
 
+export function listAllPendingCorrections(): MockClockCorrectionRequest[] {
+  ensureSeeded();
+  return store
+    .filter((r) => r.status === 'submitted')
+    .slice()
+    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+}
+
+export function listAllCorrections(): MockClockCorrectionRequest[] {
+  ensureSeeded();
+  return store
+    .slice()
+    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+}
+
 const fmt = (d: Date): string =>
   formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
 

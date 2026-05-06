@@ -52,3 +52,7 @@ export function isManagerOf(managerId: string, userId: string): boolean {
   const target = findMockUserById(userId);
   return target?.managerId === managerId;
 }
+
+export function listActiveUsers(): MockUser[] {
+  return MOCK_USERS.slice();
+}
