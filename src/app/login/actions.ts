@@ -1,13 +1,9 @@
 'use server';
 
-import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import {
-  clearMockSession,
-  setMockSession,
-} from '@/lib/data/session';
-import { findMockUserByEmail } from '@/lib/data/users';
+import { signIn, signOut } from '@/auth';
 import type { ActionResult } from '@/lib/action-result';
+import { findMockUserByEmail } from '@/lib/data/users';
 
 const SignInSchema = z.object({
   email: z.string().email(),
@@ -28,16 +24,22 @@ export async function signInAction(
     };
   }
 
+  // signIn の前に DB に存在するメールかをチェック（NextAuth callback でも検証するが
+  // UX 的に存在しないアドレスにメールを送らないように）。
   const user = await findMockUserByEmail(parsed.data.email);
-  if (!user) {
+  if (!user || user.deactivatedAt !== null) {
     return { ok: false, error: { code: 'NOT_FOUND' } };
   }
 
-  await setMockSession(user.id);
-  redirect('/clock');
+  // Magic link を送信し、verifyRequest ページにリダイレクト。
+  await signIn('nodemailer', {
+    email: parsed.data.email,
+    redirectTo: '/clock',
+  });
+  // signIn は通常 redirect をスローするためここに到達しない
+  return { ok: false, error: { code: 'INTERNAL' } };
 }
 
 export async function signOutAction(): Promise<void> {
-  await clearMockSession();
-  redirect('/login');
+  await signOut({ redirectTo: '/login' });
 }

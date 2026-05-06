@@ -1,27 +1,35 @@
-import { NextResponse, type NextRequest } from 'next/server';
+import NextAuth from 'next-auth';
+import { NextResponse } from 'next/server';
+import authConfig from '@/auth.config';
 
-const COOKIE_NAME = 'mock_user_id';
+// Middleware は edge runtime 想定なので、Prisma adapter 等を含まない
+// edge-safe な auth.config だけで NextAuth を初期化する。
+const { auth } = NextAuth(authConfig);
+
 const PUBLIC_PATHS = ['/login'];
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const hasSession = !!request.cookies.get(COOKIE_NAME)?.value;
-  const isPublic = PUBLIC_PATHS.includes(pathname);
+const isPublicPath = (pathname: string): boolean =>
+  PUBLIC_PATHS.includes(pathname) || pathname.startsWith('/api/auth');
 
-  if (!hasSession && !isPublic) {
-    const url = request.nextUrl.clone();
+export const proxy = auth((req) => {
+  const { pathname } = req.nextUrl;
+  const isAuthed = !!req.auth?.user?.id;
+  const isPublic = isPublicPath(pathname);
+
+  if (!isAuthed && !isPublic) {
+    const url = req.nextUrl.clone();
     url.pathname = '/login';
     return NextResponse.redirect(url);
   }
 
-  if (hasSession && isPublic) {
-    const url = request.nextUrl.clone();
+  if (isAuthed && pathname === '/login') {
+    const url = req.nextUrl.clone();
     url.pathname = '/clock';
     return NextResponse.redirect(url);
   }
 
   return NextResponse.next();
-}
+});
 
 export const config = {
   matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
