@@ -3,11 +3,14 @@ import type { TimeClockType } from '@prisma/client';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { buildSeedRecords } from './seed-time-clocks';
 
+export type TimeClockSource = 'web' | 'manual_correction';
+
 export interface MockTimeClock {
   id: string;
   userId: string;
   type: TimeClockType;
   occurredAt: Date;
+  source: TimeClockSource;
 }
 
 const store = new Map<string, MockTimeClock[]>();
@@ -23,6 +26,7 @@ function ensureSeeded(): void {
       userId: r.userId,
       type: r.type,
       occurredAt: r.occurredAt,
+      source: 'web',
     };
     const list = store.get(r.userId) ?? [];
     list.push(clock);
@@ -53,6 +57,7 @@ export function appendClock(
   userId: string,
   type: TimeClockType,
   occurredAt: Date = new Date(),
+  source: TimeClockSource = 'web',
 ): MockTimeClock {
   ensureSeeded();
   const clock: MockTimeClock = {
@@ -60,11 +65,58 @@ export function appendClock(
     userId,
     type,
     occurredAt,
+    source,
   };
   const existing = store.get(userId) ?? [];
   existing.push(clock);
   store.set(userId, existing);
   return clock;
+}
+
+export interface ClockSnapshotInput {
+  clockIn: string | null;
+  clockOut: string | null;
+  breakStart: string | null;
+  breakEnd: string | null;
+}
+
+const toJstInstant = (jstDate: string, hhmm: string): Date =>
+  new Date(`${jstDate}T${hhmm}:00+09:00`);
+
+export function replaceClocksForDate(
+  userId: string,
+  jstDate: string,
+  snapshot: ClockSnapshotInput,
+  source: TimeClockSource = 'manual_correction',
+): MockTimeClock[] {
+  ensureSeeded();
+  const list = store.get(userId) ?? [];
+  const kept = list.filter((c) => jstDateKey(c.occurredAt) !== jstDate);
+
+  const order: { type: TimeClockType; value: string | null }[] = [
+    { type: 'clock_in', value: snapshot.clockIn },
+    { type: 'break_start', value: snapshot.breakStart },
+    { type: 'break_end', value: snapshot.breakEnd },
+    { type: 'clock_out', value: snapshot.clockOut },
+  ];
+
+  let counter = 0;
+  const added: MockTimeClock[] = [];
+  for (const { type, value } of order) {
+    if (!value) continue;
+    const clock: MockTimeClock = {
+      id: `tc_${Date.now()}_${counter++}_${Math.random().toString(36).slice(2, 6)}`,
+      userId,
+      type,
+      occurredAt: toJstInstant(jstDate, value),
+      source,
+    };
+    kept.push(clock);
+    added.push(clock);
+  }
+
+  store.set(userId, kept);
+  return added;
 }
 
 export type ClockState =

@@ -1,7 +1,6 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import {
   Card,
   CardContent,
@@ -10,6 +9,12 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
+import {
+  APPROVAL_ACTION_LABEL,
+  APPROVAL_COMMENT_MAX_LENGTH,
+  listApprovalActions,
+  type MockApprovalAction,
+} from '@/lib/mock/approval-actions';
 import {
   findCorrectionById,
   STATUS_BADGE_CLASS as CORRECTION_BADGE,
@@ -25,6 +30,7 @@ import {
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
 import { findMockUserById } from '@/lib/mock/users';
+import { DecisionForm } from './decision-form';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
@@ -72,24 +78,40 @@ const SnapshotTable = ({
   </table>
 );
 
-const ActionPlaceholder = () => (
-  <div className="flex flex-col gap-3 rounded-md border border-dashed bg-muted/40 p-4">
-    <p className="text-xs text-muted-foreground">
-      承認アクションは次イテレーションで実装予定です（現在は骨組み）。
-    </p>
-    <div className="flex flex-wrap gap-2">
-      <Button type="button" disabled>
-        承認
-      </Button>
-      <Button type="button" variant="outline" disabled>
-        差戻し
-      </Button>
-      <Button type="button" variant="outline" disabled>
-        却下
-      </Button>
-    </div>
-  </div>
-);
+const ApprovalHistory = ({ actions }: { actions: MockApprovalAction[] }) => {
+  if (actions.length === 0) {
+    return (
+      <p className="text-sm text-muted-foreground">承認履歴はまだありません</p>
+    );
+  }
+  return (
+    <ul className="flex flex-col gap-3">
+      {actions.map((a) => {
+        const actor = findMockUserById(a.actorId);
+        return (
+          <li key={a.id} className="rounded-md border bg-muted/30 p-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-medium">
+                {APPROVAL_ACTION_LABEL[a.action]}
+                <span className="ml-2 text-xs text-muted-foreground">
+                  by {actor?.name ?? a.actorId}
+                </span>
+              </span>
+              <span className="font-mono text-xs text-muted-foreground">
+                {fmtDateTime(a.createdAt)}
+              </span>
+            </div>
+            {a.comment && (
+              <p className="mt-2 whitespace-pre-wrap text-sm text-foreground">
+                {a.comment}
+              </p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+};
 
 export default async function ApprovalDetailPage({
   params,
@@ -114,6 +136,8 @@ export default async function ApprovalDetailPage({
       redirect('/team/approvals');
     }
     const requester = findMockUserById(r.requesterId);
+    const history = listApprovalActions('correction', r.id);
+    const isPending = r.status === 'submitted';
 
     return (
       <div className="min-h-screen bg-muted">
@@ -172,10 +196,30 @@ export default async function ApprovalDetailPage({
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">承認操作</CardTitle>
+              <CardTitle className="text-base">
+                {isPending ? '承認操作' : '承認履歴'}
+              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <ActionPlaceholder />
+            <CardContent className="flex flex-col gap-6">
+              {isPending ? (
+                <DecisionForm
+                  type="correction"
+                  id={r.id}
+                  commentMaxLength={APPROVAL_COMMENT_MAX_LENGTH}
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  この申請は既に処理済みです（{CORRECTION_LABEL[r.status]}）
+                </p>
+              )}
+              {history.length > 0 && (
+                <div className="flex flex-col gap-2 border-t pt-4">
+                  <p className="text-xs text-muted-foreground">
+                    アクション履歴
+                  </p>
+                  <ApprovalHistory actions={history} />
+                </div>
+              )}
             </CardContent>
           </Card>
         </main>
@@ -190,6 +234,8 @@ export default async function ApprovalDetailPage({
     redirect('/team/approvals');
   }
   const requester = findMockUserById(r.requesterId);
+  const history = listApprovalActions('leave', r.id);
+  const isPending = r.status === 'submitted';
 
   return (
     <div className="min-h-screen bg-muted">
@@ -247,10 +293,28 @@ export default async function ApprovalDetailPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">承認操作</CardTitle>
+            <CardTitle className="text-base">
+              {isPending ? '承認操作' : '承認履歴'}
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <ActionPlaceholder />
+          <CardContent className="flex flex-col gap-6">
+            {isPending ? (
+              <DecisionForm
+                type="leave"
+                id={r.id}
+                commentMaxLength={APPROVAL_COMMENT_MAX_LENGTH}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                この申請は既に処理済みです（{LEAVE_STATUS_LABEL[r.status]}）
+              </p>
+            )}
+            {history.length > 0 && (
+              <div className="flex flex-col gap-2 border-t pt-4">
+                <p className="text-xs text-muted-foreground">アクション履歴</p>
+                <ApprovalHistory actions={history} />
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

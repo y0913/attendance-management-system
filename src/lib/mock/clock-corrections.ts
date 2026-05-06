@@ -1,7 +1,7 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { findMockUserById } from './users';
-import { listClocksForDate } from './time-clocks';
+import { listClocksForDate, replaceClocksForDate } from './time-clocks';
 import { buildSeedCorrections } from './seed-clock-corrections';
 
 export type ClockCorrectionStatus =
@@ -147,6 +147,45 @@ export function submitCorrection(
   };
   store.push(req);
   return req;
+}
+
+export type CorrectionDecision = 'approve' | 'reject' | 'return';
+
+export type DecideCorrectionResult =
+  | { ok: true; request: MockClockCorrectionRequest }
+  | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
+
+export function decideCorrection(input: {
+  id: string;
+  deciderId: string;
+  decision: CorrectionDecision;
+  isAdmin: boolean;
+}): DecideCorrectionResult {
+  ensureSeeded();
+  const req = store.find((r) => r.id === input.id);
+  if (!req) return { ok: false, reason: 'NOT_FOUND' };
+  if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
+    return { ok: false, reason: 'FORBIDDEN' };
+  }
+  if (req.status !== 'submitted') {
+    return { ok: false, reason: 'NOT_PENDING' };
+  }
+
+  const nextStatus: ClockCorrectionStatus =
+    input.decision === 'approve'
+      ? 'approved'
+      : input.decision === 'reject'
+        ? 'rejected'
+        : 'returned';
+
+  req.status = nextStatus;
+  req.decidedAt = new Date();
+
+  if (nextStatus === 'approved') {
+    replaceClocksForDate(req.requesterId, req.targetDate, req.afterPayload);
+  }
+
+  return { ok: true, request: req };
 }
 
 export const STATUS_LABEL: Record<ClockCorrectionStatus, string> = {

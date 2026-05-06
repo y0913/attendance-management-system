@@ -108,6 +108,41 @@ export function submitLeave(input: SubmitLeaveInput): MockLeaveRequest {
   return req;
 }
 
+export type LeaveDecision = 'approve' | 'reject' | 'return';
+
+export type DecideLeaveResult =
+  | { ok: true; request: MockLeaveRequest }
+  | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
+
+export function decideLeave(input: {
+  id: string;
+  deciderId: string;
+  decision: LeaveDecision;
+  isAdmin: boolean;
+}): DecideLeaveResult {
+  ensureSeeded();
+  const req = store.find((r) => r.id === input.id);
+  if (!req) return { ok: false, reason: 'NOT_FOUND' };
+  if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
+    return { ok: false, reason: 'FORBIDDEN' };
+  }
+  if (req.status !== 'submitted') {
+    return { ok: false, reason: 'NOT_PENDING' };
+  }
+
+  const nextStatus: LeaveRequestStatus =
+    input.decision === 'approve'
+      ? 'approved'
+      : input.decision === 'reject'
+        ? 'rejected'
+        : 'returned';
+
+  req.status = nextStatus;
+  req.decidedAt = new Date();
+
+  return { ok: true, request: req };
+}
+
 export const LEAVE_STATUS_LABEL: Record<LeaveRequestStatus, string> = {
   submitted: '審査中',
   approved: '承認済',
