@@ -1,3 +1,11 @@
+// Phase 5: 内部を Prisma 経由に書き換え。すべて async。
+//
+// AuditLog の entityType / action は Prisma スキーマでは String 型
+// （アプリ層で union 制約）。before / after は Json。
+
+import type { AuditLog } from '@prisma/client';
+import { prisma } from '@/lib/db';
+
 export type AuditEntityType =
   | 'work_rule_version'
   | 'company'
@@ -23,7 +31,16 @@ export interface MockAuditLog {
   createdAt: Date;
 }
 
-const store: MockAuditLog[] = [];
+const toMockAuditLog = (l: AuditLog): MockAuditLog => ({
+  id: l.id,
+  entityType: l.entityType as AuditEntityType,
+  entityId: l.entityId,
+  action: l.action as AuditAction,
+  actorId: l.actorId,
+  before: l.before,
+  after: l.after,
+  createdAt: l.createdAt,
+});
 
 interface RecordAuditLogInput {
   entityType: AuditEntityType;
@@ -34,19 +51,31 @@ interface RecordAuditLogInput {
   after?: unknown;
 }
 
-export function recordAuditLog(input: RecordAuditLogInput): MockAuditLog {
-  const log: MockAuditLog = {
-    id: `aud_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    entityType: input.entityType,
-    entityId: input.entityId,
-    action: input.action,
-    actorId: input.actorId,
-    before: input.before ?? null,
-    after: input.after ?? null,
-    createdAt: new Date(),
-  };
-  store.push(log);
-  return log;
+// Prisma の Json @nullable は `Prisma.JsonNull` でしか null を表現できない。
+// undefined の場合は何もセットしない（DB 上 NULL）、それ以外は object として渡す。
+import type { Prisma } from '@prisma/client';
+
+const toJsonInput = (
+  v: unknown,
+): Prisma.NullableJsonNullValueInput | Prisma.InputJsonValue | undefined => {
+  if (v === null || v === undefined) return null as unknown as Prisma.NullableJsonNullValueInput;
+  return v as Prisma.InputJsonValue;
+};
+
+export async function recordAuditLog(
+  input: RecordAuditLogInput,
+): Promise<MockAuditLog> {
+  const created = await prisma.auditLog.create({
+    data: {
+      entityType: input.entityType,
+      entityId: input.entityId,
+      action: input.action,
+      actorId: input.actorId,
+      before: toJsonInput(input.before),
+      after: toJsonInput(input.after),
+    },
+  });
+  return toMockAuditLog(created);
 }
 
 export interface ListAuditLogsFilters {
@@ -55,21 +84,18 @@ export interface ListAuditLogsFilters {
   limit?: number;
 }
 
-export function listAuditLogs(
+export async function listAuditLogs(
   filters: ListAuditLogsFilters = {},
-): MockAuditLog[] {
-  let result = store.slice();
-  if (filters.entityType) {
-    result = result.filter((l) => l.entityType === filters.entityType);
-  }
-  if (filters.actorId) {
-    result = result.filter((l) => l.actorId === filters.actorId);
-  }
-  result.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-  if (filters.limit && filters.limit > 0) {
-    result = result.slice(0, filters.limit);
-  }
-  return result;
+): Promise<MockAuditLog[]> {
+  const list = await prisma.auditLog.findMany({
+    where: {
+      ...(filters.entityType ? { entityType: filters.entityType } : {}),
+      ...(filters.actorId ? { actorId: filters.actorId } : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+    ...(filters.limit && filters.limit > 0 ? { take: filters.limit } : {}),
+  });
+  return list.map(toMockAuditLog);
 }
 
 export const AUDIT_ENTITY_LABEL: Record<AuditEntityType, string> = {

@@ -45,7 +45,7 @@ export async function closeMonthAction(input: {
   const target = await findMockUserById(parsed.data.userId);
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
-  if (findClosing(parsed.data.userId, parsed.data.yearMonth)) {
+  if (await findClosing(parsed.data.userId, parsed.data.yearMonth)) {
     return {
       ok: false,
       error: { code: 'CONFLICT', message: '既に締め済みです' },
@@ -64,7 +64,7 @@ export async function closeMonthAction(input: {
     };
   }
 
-  recordAuditLog({
+  await recordAuditLog({
     entityType: 'attendance_closing',
     entityId: closing.id,
     action: 'close',
@@ -104,14 +104,14 @@ export async function bulkCloseMonthAction(input: {
   let closedCount = 0;
   let skippedCount = 0;
   for (const u of await listActiveUsers()) {
-    if (findClosing(u.id, ym)) {
+    if (await findClosing(u.id, ym)) {
       skippedCount += 1;
       continue;
     }
     const closing = await closeMonth(u.id, ym, session.id);
     if (closing) {
       closedCount += 1;
-      recordAuditLog({
+      await recordAuditLog({
         entityType: 'attendance_closing',
         entityId: closing.id,
         action: 'close',
@@ -153,7 +153,7 @@ export async function uncloseAction(input: {
     };
   }
 
-  const target = findClosingById(parsed.data.closingId);
+  const target = await findClosingById(parsed.data.closingId);
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
   const beforeSnap = {
@@ -164,9 +164,9 @@ export async function uncloseAction(input: {
     closedById: target.closedById,
     snapshot: target.snapshot,
   };
-  deleteClosing(parsed.data.closingId);
+  await deleteClosing(parsed.data.closingId);
 
-  recordAuditLog({
+  await recordAuditLog({
     entityType: 'attendance_closing',
     entityId: parsed.data.closingId,
     action: 'delete',

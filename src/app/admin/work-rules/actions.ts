@@ -84,7 +84,7 @@ export async function upsertWorkRuleAction(
     };
   }
 
-  if (isValidFromTaken(validFrom, data.id)) {
+  if (await isValidFromTaken(validFrom, data.id)) {
     return {
       ok: false,
       error: {
@@ -122,7 +122,7 @@ export async function upsertWorkRuleAction(
   }
 
   if (data.id) {
-    const target = findWorkRuleVersionById(data.id);
+    const target = await findWorkRuleVersionById(data.id);
     if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
     if (!isFutureVersion(target)) {
       return {
@@ -134,8 +134,8 @@ export async function upsertWorkRuleAction(
       };
     }
     const beforeSnap = { ...target };
-    const updated = updateWorkRuleVersion(data.id, ruleInput);
-    recordAuditLog({
+    const updated = await updateWorkRuleVersion(data.id, ruleInput);
+    await recordAuditLog({
       entityType: 'work_rule_version',
       entityId: data.id,
       action: 'update',
@@ -149,8 +149,8 @@ export async function upsertWorkRuleAction(
     return { ok: true, data: { id: data.id } };
   }
 
-  const created = createWorkRuleVersion(ruleInput, session.id);
-  recordAuditLog({
+  const created = await createWorkRuleVersion(ruleInput, session.id);
+  await recordAuditLog({
     entityType: 'work_rule_version',
     entityId: created.id,
     action: 'create',
@@ -172,7 +172,7 @@ export async function deleteWorkRuleAction(input: {
     return { ok: false, error: { code: 'FORBIDDEN' } };
   }
 
-  const target = findWorkRuleVersionById(input.id);
+  const target = await findWorkRuleVersionById(input.id);
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
   if (!isFutureVersion(target)) {
     return {
@@ -185,8 +185,8 @@ export async function deleteWorkRuleAction(input: {
   }
 
   const beforeSnap = { ...target };
-  deleteWorkRuleVersion(input.id);
-  recordAuditLog({
+  await deleteWorkRuleVersion(input.id);
+  await recordAuditLog({
     entityType: 'work_rule_version',
     entityId: input.id,
     action: 'delete',

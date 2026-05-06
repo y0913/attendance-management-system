@@ -56,7 +56,7 @@ export async function updateCompanySettingsAction(input: {
     legalHolidayWeekday: parsed.data.legalHolidayWeekday,
   });
 
-  recordAuditLog({
+  await recordAuditLog({
     entityType: 'company',
     entityId: after.id,
     action: 'update',

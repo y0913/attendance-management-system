@@ -33,7 +33,7 @@ export default async function NewWorkRulePage() {
   );
 
   // 現行ルールを初期値に（同じ値で日付だけ未来に変えれば最小編集で済む）
-  const current = getCurrentWorkRuleVersion();
+  const current = await getCurrentWorkRuleVersion();
   const initial = current
     ? {
         validFrom: tomorrow,

@@ -56,7 +56,7 @@ export default async function AuditLogsPage({
     sp.entity && isEntityType(sp.entity) ? sp.entity : null;
   const actorFilter = sp.actor ?? null;
 
-  const logs = listAuditLogs({
+  const logs = await listAuditLogs({
     entityType: entityFilter ?? undefined,
     actorId: actorFilter ?? undefined,
     limit: 200,

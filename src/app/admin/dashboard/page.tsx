@@ -22,7 +22,7 @@ import {
   currentYearMonthJst,
   shiftYearMonth,
 } from '@/lib/mock/attendance-summary';
-import { findClosing } from '@/lib/mock/attendance-closings';
+import { listClosingsForMonth } from '@/lib/mock/attendance-closings';
 import { countOvertimeAlerts } from '@/lib/mock/overtime-alerts';
 import {
   countAllPending,
@@ -107,8 +107,10 @@ export default async function AdminDashboardPage() {
   );
   const previousYm = shiftYearMonth(currentYearMonthJst(now), -1);
   const overtimeAlertCount = await countOvertimeAlerts(previousYm);
+  const closingsForMonth = await listClosingsForMonth(previousYm);
+  const closedUserIds = new Set(closingsForMonth.map((c) => c.userId));
   const unclosedCount = allUsers.filter(
-    (u) => findClosing(u.id, previousYm) === null,
+    (u) => !closedUserIds.has(u.id),
   ).length;
 
   return (

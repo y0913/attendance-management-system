@@ -112,7 +112,7 @@ export async function upsertEmployeeAction(
       hiredAt,
       baseSalary: data.baseSalary,
     });
-    recordAuditLog({
+    await recordAuditLog({
       entityType: 'user',
       entityId: data.id,
       action: 'update',
@@ -135,7 +135,7 @@ export async function upsertEmployeeAction(
     hiredAt,
     baseSalary: data.baseSalary,
   });
-  recordAuditLog({
+  await recordAuditLog({
     entityType: 'user',
     entityId: created.id,
     action: 'create',
@@ -184,7 +184,7 @@ export async function setEmployeeDeactivationAction(input: {
     parsed.data.id,
     parsed.data.deactivate ? new Date() : null,
   );
-  recordAuditLog({
+  await recordAuditLog({
     entityType: 'user',
     entityId: parsed.data.id,
     action: parsed.data.deactivate ? 'deactivate' : 'reactivate',

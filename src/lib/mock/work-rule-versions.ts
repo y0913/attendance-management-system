@@ -1,3 +1,11 @@
+// Phase 5: 内部を Prisma 経由に書き換え。すべて async。
+//
+// Prisma の Decimal 型 ↔ number は Number() で変換。
+// classifyVersionStatus は pure 関数のままで OK（既に取得済みの versions を渡す）。
+
+import type { WorkRuleVersion } from '@prisma/client';
+import { prisma } from '@/lib/db';
+
 export interface MockWorkRuleVersion {
   id: string;
   validFrom: Date;
@@ -20,58 +28,56 @@ export const LEGAL_MINIMUMS = {
   nightRateAddition: 0.25,
   legalHolidayRate: 1.35,
   monthly60hOtRate: 1.5,
-  dailyOtThresholdMaxMin: 480, // 1日8時間まで（これを超えると残業扱い必須）
+  dailyOtThresholdMaxMin: 480, // 1日8時間まで
   weeklyOtThresholdMaxMin: 2400, // 週40時間
   monthly60hThresholdMaxMin: 3600, // 60時間
 } as const;
 
-const store: MockWorkRuleVersion[] = [];
+const DEFAULT_COMPANY_ID = 'co_default';
 
-let seeded = false;
-function ensureSeeded(): void {
-  if (seeded) return;
-  seeded = true;
-  store.push({
-    id: 'wrv_seed_0',
-    validFrom: new Date('2020-01-01T00:00:00+09:00'),
-    dailyOtThresholdMin: 480,
-    weeklyOtThresholdMin: 2400,
-    otRate: 1.25,
-    nightStartTime: '22:00',
-    nightEndTime: '05:00',
-    nightRateAddition: 0.25,
-    legalHolidayRate: 1.35,
-    monthly60hOtRate: 1.5,
-    monthly60hThresholdMin: 3600,
-    complianceMode: true,
-    createdAt: new Date('2020-01-01T00:00:00+09:00'),
-    createdById: 'u_admin',
+const toMockWorkRuleVersion = (v: WorkRuleVersion): MockWorkRuleVersion => ({
+  id: v.id,
+  validFrom: v.validFrom,
+  dailyOtThresholdMin: v.dailyOtThresholdMin,
+  weeklyOtThresholdMin: v.weeklyOtThresholdMin,
+  otRate: Number(v.otRate),
+  nightStartTime: v.nightStartTime,
+  nightEndTime: v.nightEndTime,
+  nightRateAddition: Number(v.nightRateAddition),
+  legalHolidayRate: Number(v.legalHolidayRate),
+  monthly60hOtRate: Number(v.monthly60hOtRate),
+  monthly60hThresholdMin: v.monthly60hThresholdMin,
+  complianceMode: v.complianceMode,
+  createdAt: v.createdAt,
+  createdById: v.createdById,
+});
+
+export async function listWorkRuleVersions(): Promise<MockWorkRuleVersion[]> {
+  const list = await prisma.workRuleVersion.findMany({
+    where: { companyId: DEFAULT_COMPANY_ID },
+    orderBy: { validFrom: 'asc' },
   });
+  return list.map(toMockWorkRuleVersion);
 }
 
-export function listWorkRuleVersions(): MockWorkRuleVersion[] {
-  ensureSeeded();
-  return store
-    .slice()
-    .sort((a, b) => a.validFrom.getTime() - b.validFrom.getTime());
-}
-
-export function findWorkRuleVersionById(
+export async function findWorkRuleVersionById(
   id: string,
-): MockWorkRuleVersion | null {
-  ensureSeeded();
-  return store.find((v) => v.id === id) ?? null;
+): Promise<MockWorkRuleVersion | null> {
+  const v = await prisma.workRuleVersion.findUnique({ where: { id } });
+  return v ? toMockWorkRuleVersion(v) : null;
 }
 
-export function getCurrentWorkRuleVersion(
+export async function getCurrentWorkRuleVersion(
   asOf: Date = new Date(),
-): MockWorkRuleVersion | null {
-  ensureSeeded();
-  const candidates = store.filter((v) => v.validFrom.getTime() <= asOf.getTime());
-  if (candidates.length === 0) return null;
-  return candidates.reduce((latest, v) =>
-    v.validFrom.getTime() > latest.validFrom.getTime() ? v : latest,
-  );
+): Promise<MockWorkRuleVersion | null> {
+  const v = await prisma.workRuleVersion.findFirst({
+    where: {
+      companyId: DEFAULT_COMPANY_ID,
+      validFrom: { lte: asOf },
+    },
+    orderBy: { validFrom: 'desc' },
+  });
+  return v ? toMockWorkRuleVersion(v) : null;
 }
 
 export function isFutureVersion(
@@ -89,19 +95,14 @@ export function classifyVersionStatus(
   asOf: Date = new Date(),
 ): VersionStatus {
   if (version.validFrom.getTime() > asOf.getTime()) return 'future';
-  const current = getCurrentWorkRuleVersionFrom(allVersions, asOf);
-  return current?.id === version.id ? 'current' : 'past';
-}
-
-function getCurrentWorkRuleVersionFrom(
-  versions: MockWorkRuleVersion[],
-  asOf: Date,
-): MockWorkRuleVersion | null {
-  const candidates = versions.filter((v) => v.validFrom.getTime() <= asOf.getTime());
-  if (candidates.length === 0) return null;
-  return candidates.reduce((latest, v) =>
+  const candidates = allVersions.filter(
+    (v) => v.validFrom.getTime() <= asOf.getTime(),
+  );
+  if (candidates.length === 0) return 'past';
+  const current = candidates.reduce((latest, v) =>
     v.validFrom.getTime() > latest.validFrom.getTime() ? v : latest,
   );
+  return current.id === version.id ? 'current' : 'past';
 }
 
 export interface RuleInput {
@@ -174,55 +175,76 @@ export function checkComplianceViolations(
   return violations;
 }
 
-export function createWorkRuleVersion(
+export async function createWorkRuleVersion(
   input: RuleInput,
   createdById: string,
-): MockWorkRuleVersion {
-  ensureSeeded();
-  const created: MockWorkRuleVersion = {
-    id: `wrv_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-    ...input,
-    createdAt: new Date(),
-    createdById,
-  };
-  // 同じ valid_from の重複を防止: 同日があれば呼び出し側で弾く
-  store.push(created);
-  return created;
+): Promise<MockWorkRuleVersion> {
+  const created = await prisma.workRuleVersion.create({
+    data: {
+      companyId: DEFAULT_COMPANY_ID,
+      validFrom: input.validFrom,
+      dailyOtThresholdMin: input.dailyOtThresholdMin,
+      weeklyOtThresholdMin: input.weeklyOtThresholdMin,
+      otRate: input.otRate,
+      nightStartTime: input.nightStartTime,
+      nightEndTime: input.nightEndTime,
+      nightRateAddition: input.nightRateAddition,
+      legalHolidayRate: input.legalHolidayRate,
+      monthly60hOtRate: input.monthly60hOtRate,
+      monthly60hThresholdMin: input.monthly60hThresholdMin,
+      complianceMode: input.complianceMode,
+      createdById,
+    },
+  });
+  return toMockWorkRuleVersion(created);
 }
 
-export function updateWorkRuleVersion(
+export async function updateWorkRuleVersion(
   id: string,
   input: RuleInput,
-): MockWorkRuleVersion | null {
-  const target = store.find((v) => v.id === id);
-  if (!target) return null;
-  target.validFrom = input.validFrom;
-  target.dailyOtThresholdMin = input.dailyOtThresholdMin;
-  target.weeklyOtThresholdMin = input.weeklyOtThresholdMin;
-  target.otRate = input.otRate;
-  target.nightStartTime = input.nightStartTime;
-  target.nightEndTime = input.nightEndTime;
-  target.nightRateAddition = input.nightRateAddition;
-  target.legalHolidayRate = input.legalHolidayRate;
-  target.monthly60hOtRate = input.monthly60hOtRate;
-  target.monthly60hThresholdMin = input.monthly60hThresholdMin;
-  target.complianceMode = input.complianceMode;
-  return target;
+): Promise<MockWorkRuleVersion | null> {
+  try {
+    const updated = await prisma.workRuleVersion.update({
+      where: { id },
+      data: {
+        validFrom: input.validFrom,
+        dailyOtThresholdMin: input.dailyOtThresholdMin,
+        weeklyOtThresholdMin: input.weeklyOtThresholdMin,
+        otRate: input.otRate,
+        nightStartTime: input.nightStartTime,
+        nightEndTime: input.nightEndTime,
+        nightRateAddition: input.nightRateAddition,
+        legalHolidayRate: input.legalHolidayRate,
+        monthly60hOtRate: input.monthly60hOtRate,
+        monthly60hThresholdMin: input.monthly60hThresholdMin,
+        complianceMode: input.complianceMode,
+      },
+    });
+    return toMockWorkRuleVersion(updated);
+  } catch {
+    return null;
+  }
 }
 
-export function deleteWorkRuleVersion(id: string): boolean {
-  const idx = store.findIndex((v) => v.id === id);
-  if (idx < 0) return false;
-  store.splice(idx, 1);
-  return true;
+export async function deleteWorkRuleVersion(id: string): Promise<boolean> {
+  try {
+    await prisma.workRuleVersion.delete({ where: { id } });
+    return true;
+  } catch {
+    return false;
+  }
 }
 
-export function isValidFromTaken(
+export async function isValidFromTaken(
   validFrom: Date,
   exceptId?: string,
-): boolean {
-  return store.some(
-    (v) =>
-      v.id !== exceptId && v.validFrom.getTime() === validFrom.getTime(),
-  );
+): Promise<boolean> {
+  const v = await prisma.workRuleVersion.findFirst({
+    where: {
+      companyId: DEFAULT_COMPANY_ID,
+      validFrom,
+      ...(exceptId ? { NOT: { id: exceptId } } : {}),
+    },
+  });
+  return v !== null;
 }

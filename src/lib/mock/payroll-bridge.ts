@@ -79,7 +79,7 @@ export async function computeMonthlyPayroll(
 
   const days = listMonthDays(yearMonth);
   const monthEndDate = days[days.length - 1] ?? new Date();
-  const currentRule = getCurrentWorkRuleVersion(monthEndDate);
+  const currentRule = await getCurrentWorkRuleVersion(monthEndDate);
   if (!currentRule) {
     return {
       yearMonth,
@@ -91,7 +91,7 @@ export async function computeMonthlyPayroll(
     };
   }
   const rule = toCalcWorkRuleVersion(currentRule);
-  const allRules = listWorkRuleVersions().map(toCalcWorkRuleVersion);
+  const allRules = (await listWorkRuleVersions()).map(toCalcWorkRuleVersion);
 
   const company = await getCompany();
 

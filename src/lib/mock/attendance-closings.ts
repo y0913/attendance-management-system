@@ -1,5 +1,11 @@
+// Phase 5: 内部を Prisma 経由に書き換え。すべて async。
+//
+// snapshot は Prisma の Json として保存。読み込み時は ClosingSnapshot に cast。
+
+import type { AttendanceClosing } from '@prisma/client';
 import { formatInTimeZone } from 'date-fns-tz';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
+import { prisma } from '@/lib/db';
 import {
   summarizeMonth,
   totalWorkMinutes,
@@ -36,7 +42,16 @@ export interface MockAttendanceClosing {
   snapshot: ClosingSnapshot;
 }
 
-const store: MockAttendanceClosing[] = [];
+const DEFAULT_COMPANY_ID = 'co_default';
+
+const toMockClosing = (c: AttendanceClosing): MockAttendanceClosing => ({
+  id: c.id,
+  userId: c.userId,
+  yearMonth: c.yearMonth,
+  closedAt: c.closedAt,
+  closedById: c.closedById,
+  snapshot: c.snapshot as unknown as ClosingSnapshot,
+});
 
 const dailyToEntry = (s: DailySummary): DailyClosingEntry => ({
   date: s.jstDateKey,
@@ -51,7 +66,6 @@ const overlapsMonth = (
   endDate: string,
   yearMonth: string,
 ): boolean => {
-  // 期間 [startDate, endDate] と yearMonth (yyyy-MM) が重なるか
   const ymStart = `${yearMonth}-01`;
   const lastDay = new Date(`${yearMonth}-01T00:00:00+09:00`);
   lastDay.setUTCMonth(lastDay.getUTCMonth() + 1);
@@ -92,32 +106,41 @@ export async function buildClosingSnapshot(
   };
 }
 
-export function findClosing(
+export async function findClosing(
   userId: string,
   yearMonth: string,
-): MockAttendanceClosing | null {
-  return (
-    store.find((c) => c.userId === userId && c.yearMonth === yearMonth) ?? null
-  );
+): Promise<MockAttendanceClosing | null> {
+  const c = await prisma.attendanceClosing.findUnique({
+    where: { userId_yearMonth: { userId, yearMonth } },
+  });
+  return c ? toMockClosing(c) : null;
 }
 
-export function listClosingsForMonth(
+export async function listClosingsForMonth(
   yearMonth: string,
-): MockAttendanceClosing[] {
-  return store.filter((c) => c.yearMonth === yearMonth).slice();
+): Promise<MockAttendanceClosing[]> {
+  const list = await prisma.attendanceClosing.findMany({
+    where: { yearMonth },
+  });
+  return list.map(toMockClosing);
 }
 
-export function findClosingById(
+export async function findClosingById(
   id: string,
-): MockAttendanceClosing | null {
-  return store.find((c) => c.id === id) ?? null;
+): Promise<MockAttendanceClosing | null> {
+  const c = await prisma.attendanceClosing.findUnique({ where: { id } });
+  return c ? toMockClosing(c) : null;
 }
 
-export function deleteClosing(id: string): MockAttendanceClosing | null {
-  const idx = store.findIndex((c) => c.id === id);
-  if (idx < 0) return null;
-  const [removed] = store.splice(idx, 1);
-  return removed;
+export async function deleteClosing(
+  id: string,
+): Promise<MockAttendanceClosing | null> {
+  try {
+    const removed = await prisma.attendanceClosing.delete({ where: { id } });
+    return toMockClosing(removed);
+  } catch {
+    return null;
+  }
 }
 
 export async function closeMonth(
@@ -125,18 +148,19 @@ export async function closeMonth(
   yearMonth: string,
   closedById: string,
 ): Promise<MockAttendanceClosing | null> {
-  if (findClosing(userId, yearMonth)) return null;
+  const existing = await findClosing(userId, yearMonth);
+  if (existing) return null;
   const snapshot = await buildClosingSnapshot(userId, yearMonth);
-  const closing: MockAttendanceClosing = {
-    id: `acl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
-    userId,
-    yearMonth,
-    closedAt: new Date(),
-    closedById,
-    snapshot,
-  };
-  store.push(closing);
-  return closing;
+  const created = await prisma.attendanceClosing.create({
+    data: {
+      companyId: DEFAULT_COMPANY_ID,
+      userId,
+      yearMonth,
+      closedById,
+      snapshot: snapshot as unknown as object,
+    },
+  });
+  return toMockClosing(created);
 }
 
 export interface EffectiveMonthlySummary {
@@ -156,7 +180,7 @@ export async function getEffectiveMonthlySummary(
   userId: string,
   yearMonth: string,
 ): Promise<EffectiveMonthlySummary> {
-  const closing = findClosing(userId, yearMonth);
+  const closing = await findClosing(userId, yearMonth);
   if (closing) {
     return {
       isClosed: true,

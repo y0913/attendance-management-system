@@ -49,10 +49,10 @@ export default async function EditWorkRulePage({
   if (session.role !== 'admin') redirect('/clock');
 
   const { id } = await params;
-  const target = findWorkRuleVersionById(id);
+  const target = await findWorkRuleVersionById(id);
   if (!target) notFound();
 
-  const versions = listWorkRuleVersions();
+  const versions = await listWorkRuleVersions();
   const status = classifyVersionStatus(target, versions);
   const isFuture = status === 'future';
   const myPending = await countPendingForApprover(session.id);

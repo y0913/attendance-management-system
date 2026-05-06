@@ -85,7 +85,7 @@ export default async function ClosingsPage({
       userId: u.id,
       userName: u.name,
       role: ROLE_LABEL[u.role],
-      closing: findClosing(u.id, ym),
+      closing: await findClosing(u.id, ym),
       preview: await buildClosingSnapshot(u.id, ym),
     })),
   );
