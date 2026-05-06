@@ -164,6 +164,29 @@ export function submitCorrection(
   return req;
 }
 
+export type WithdrawCorrectionResult =
+  | { ok: true; request: MockClockCorrectionRequest }
+  | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
+
+export function withdrawCorrection(input: {
+  id: string;
+  requesterId: string;
+}): WithdrawCorrectionResult {
+  ensureSeeded();
+  const req = store.find((r) => r.id === input.id);
+  if (!req) return { ok: false, reason: 'NOT_FOUND' };
+  if (req.requesterId !== input.requesterId) {
+    return { ok: false, reason: 'FORBIDDEN' };
+  }
+  if (req.status !== 'submitted') {
+    return { ok: false, reason: 'NOT_PENDING' };
+  }
+  req.status = 'withdrawn';
+  req.decidedAt = new Date();
+  req.currentApproverId = null;
+  return { ok: true, request: req };
+}
+
 export type CorrectionDecision = 'approve' | 'reject' | 'return';
 
 export type DecideCorrectionResult =

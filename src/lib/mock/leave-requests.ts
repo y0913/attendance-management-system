@@ -123,6 +123,29 @@ export function submitLeave(input: SubmitLeaveInput): MockLeaveRequest {
   return req;
 }
 
+export type WithdrawLeaveResult =
+  | { ok: true; request: MockLeaveRequest }
+  | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
+
+export function withdrawLeave(input: {
+  id: string;
+  requesterId: string;
+}): WithdrawLeaveResult {
+  ensureSeeded();
+  const req = store.find((r) => r.id === input.id);
+  if (!req) return { ok: false, reason: 'NOT_FOUND' };
+  if (req.requesterId !== input.requesterId) {
+    return { ok: false, reason: 'FORBIDDEN' };
+  }
+  if (req.status !== 'submitted') {
+    return { ok: false, reason: 'NOT_PENDING' };
+  }
+  req.status = 'withdrawn';
+  req.decidedAt = new Date();
+  req.currentApproverId = null;
+  return { ok: true, request: req };
+}
+
 export type LeaveDecision = 'approve' | 'reject' | 'return';
 
 export type DecideLeaveResult =

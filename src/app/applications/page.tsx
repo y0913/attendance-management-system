@@ -27,6 +27,7 @@ import {
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
 import { findMockUserById } from '@/lib/mock/users';
+import { WithdrawButton } from './withdraw-button';
 
 const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
@@ -36,6 +37,7 @@ const dash = (s: string | null) => s ?? '-';
 interface UnifiedRow {
   id: string;
   kind: 'correction' | 'leave';
+  status: string;
   badge: { label: string; class: string };
   typeLabel: string;
   targetLabel: React.ReactNode;
@@ -75,6 +77,7 @@ const correctionToRow = (
 ): UnifiedRow => ({
   id: r.id,
   kind: 'correction',
+  status: r.status,
   badge: {
     label: CORRECTION_LABEL[r.status],
     class: CORRECTION_BADGE[r.status],
@@ -99,6 +102,7 @@ const correctionToRow = (
 const leaveToRow = (r: MockLeaveRequest): UnifiedRow => ({
   id: r.id,
   kind: 'leave',
+  status: r.status,
   badge: {
     label: LEAVE_STATUS_LABEL[r.status],
     class: LEAVE_STATUS_BADGE_CLASS[r.status],
@@ -172,6 +176,7 @@ export default async function ApplicationsPage() {
                       <th className="px-3 py-2 font-medium">理由</th>
                       <th className="px-3 py-2 font-medium">申請日時</th>
                       <th className="px-3 py-2 font-medium">承認者</th>
+                      <th className="px-3 py-2 font-medium" />
                     </tr>
                   </thead>
                   <tbody>
@@ -201,6 +206,15 @@ export default async function ApplicationsPage() {
                         </td>
                         <td className="px-3 py-3 text-xs text-muted-foreground">
                           {r.approverName}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          {r.status === 'submitted' ? (
+                            <WithdrawButton type={r.kind} id={r.id} />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">
+                              -
+                            </span>
+                          )}
                         </td>
                       </tr>
                     ))}
