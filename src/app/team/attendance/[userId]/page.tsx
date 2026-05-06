@@ -10,12 +10,10 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
+import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
 import {
   currentYearMonthJst,
   shiftYearMonth,
-  summarizeMonth,
-  totalWorkMinutes,
-  type DailySummary,
 } from '@/lib/mock/attendance-summary';
 import { getDailyNotesMap } from '@/lib/mock/daily-notes';
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
@@ -26,7 +24,10 @@ const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'] as const
 
 const isValidYm = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 
-const fmtTime = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
+const weekdayOf = (jstDate: string): number => {
+  const d = new Date(`${jstDate}T00:00:00+09:00`);
+  return Number(formatInTimeZone(d, JST_TIMEZONE, 'i')) % 7; // 1=Mon..7=Sun → 1..0
+};
 
 const fmtMinutes = (min: number | null): string => {
   if (min == null) return '-';
@@ -40,9 +41,12 @@ const fmtMonthTitle = (ym: string) => {
   return `${y}年${Number(m)}月`;
 };
 
-const dayClass = (s: DailySummary): string => {
-  if (s.weekday === 0) return 'text-rose-600';
-  if (s.weekday === 6) return 'text-sky-600';
+const fmtDateTime = (d: Date) =>
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+
+const dayClass = (weekday: number): string => {
+  if (weekday === 0) return 'text-rose-600';
+  if (weekday === 6) return 'text-sky-600';
   return '';
 };
 
@@ -63,7 +67,6 @@ export default async function TeamAttendanceUserPage({
   const target = findMockUserById(userId);
   if (!target) notFound();
 
-  // admin は全員、approver は自分の部下のみ
   if (session.role !== 'admin' && !isManagerOf(session.id, userId)) {
     redirect('/team/attendance');
   }
@@ -71,17 +74,14 @@ export default async function TeamAttendanceUserPage({
   const sp = await searchParams;
   const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : currentYearMonthJst();
 
-  const summaries = summarizeMonth(target.id, ym);
+  const summary = getEffectiveMonthlySummary(target.id, ym);
   const notesMap = getDailyNotesMap(
     target.id,
-    summaries.map((s) => s.jstDateKey),
+    summary.daily.map((d) => d.date),
   );
-  const totalMin = totalWorkMinutes(summaries);
-  const totalBreakMin = summaries.reduce((sum, s) => sum + s.breakMinutes, 0);
-  const workedDays = summaries.filter((s) => s.workMinutes != null).length;
-  const missingClockOutDays = summaries.filter(
-    (s) => s.clockIn && !s.clockOut,
-  ).length;
+  const closedBy = summary.closedById
+    ? findMockUserById(summary.closedById)
+    : null;
   const pendingCount = countPendingForApprover(session.id);
 
   const prevYm = shiftYearMonth(ym, -1);
@@ -111,19 +111,37 @@ export default async function TeamAttendanceUserPage({
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-base">
-                {fmtMonthTitle(ym)} の勤怠
-              </CardTitle>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-base">
+                  {fmtMonthTitle(ym)} の勤怠
+                </CardTitle>
+                {summary.isClosed && (
+                  <span
+                    className="inline-flex items-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-900"
+                    title={
+                      summary.closedAt
+                        ? `${closedBy?.name ?? '-'} ・ ${fmtDateTime(summary.closedAt)}`
+                        : ''
+                    }
+                  >
+                    締め済み
+                  </span>
+                )}
+              </div>
               <p className="text-sm text-muted-foreground">
-                勤務日数 {workedDays} 日 ・ 合計勤務時間 {fmtMinutes(totalMin)}
+                勤務日数 {summary.workedDays} 日 ・ 合計勤務時間{' '}
+                {fmtMinutes(summary.totalWorkMinutes)}
+                {summary.isClosed && summary.closedAt && (
+                  <span className="ml-2 text-xs">
+                    （{fmtDateTime(summary.closedAt)} に snapshot 凍結）
+                  </span>
+                )}
               </p>
             </div>
             <div className="flex items-center gap-2">
               <Button asChild variant="outline" size="sm">
-                <Link
-                  href={`/team/attendance/${target.id}?ym=${prevYm}`}
-                >
+                <Link href={`/team/attendance/${target.id}?ym=${prevYm}`}>
                   ← 前月
                 </Link>
               </Button>
@@ -135,9 +153,7 @@ export default async function TeamAttendanceUserPage({
                 </Link>
               </Button>
               <Button asChild variant="outline" size="sm">
-                <Link
-                  href={`/team/attendance/${target.id}?ym=${nextYm}`}
-                >
+                <Link href={`/team/attendance/${target.id}?ym=${nextYm}`}>
                   次月 →
                 </Link>
               </Button>
@@ -158,40 +174,41 @@ export default async function TeamAttendanceUserPage({
                   </tr>
                 </thead>
                 <tbody>
-                  {summaries.map((s) => {
-                    const empty = !s.clockIn && !s.clockOut;
-                    const note = notesMap.get(s.jstDateKey);
+                  {summary.daily.map((d) => {
+                    const empty = !d.clockIn && !d.clockOut;
+                    const note = notesMap.get(d.date);
+                    const wd = weekdayOf(d.date);
                     return (
                       <tr
-                        key={s.jstDateKey}
+                        key={d.date}
                         className={`border-b last:border-b-0 ${
                           empty ? 'text-muted-foreground' : ''
                         }`}
                       >
                         <td className="px-3 py-2 font-mono">
                           <Link
-                            href={`/team/attendance/${target.id}/${s.jstDateKey}?ym=${ym}`}
+                            href={`/team/attendance/${target.id}/${d.date}?ym=${ym}`}
                             className="text-primary underline-offset-4 hover:underline"
                           >
-                            {s.jstDateKey}
+                            {d.date}
                           </Link>
                         </td>
-                        <td className={`px-3 py-2 ${dayClass(s)}`}>
-                          {WEEKDAY_LABEL[s.weekday]}
+                        <td className={`px-3 py-2 ${dayClass(wd)}`}>
+                          {WEEKDAY_LABEL[wd]}
                         </td>
                         <td className="px-3 py-2 font-mono">
-                          {s.clockIn ? fmtTime(s.clockIn.occurredAt) : '-'}
+                          {d.clockIn ?? '-'}
                         </td>
                         <td className="px-3 py-2 font-mono">
-                          {s.clockOut ? fmtTime(s.clockOut.occurredAt) : '-'}
+                          {d.clockOut ?? '-'}
                         </td>
                         <td className="px-3 py-2 font-mono">
-                          {s.breakMinutes > 0
-                            ? fmtMinutes(s.breakMinutes)
+                          {d.breakMinutes > 0
+                            ? fmtMinutes(d.breakMinutes)
                             : '-'}
                         </td>
                         <td className="px-3 py-2 font-mono">
-                          {fmtMinutes(s.workMinutes)}
+                          {fmtMinutes(d.workMinutes)}
                         </td>
                         <td
                           className="max-w-[260px] truncate px-3 py-2"
@@ -211,9 +228,9 @@ export default async function TeamAttendanceUserPage({
                   <tr className="border-t-2">
                     <td className="px-3 py-3" colSpan={2}>
                       合計
-                      {missingClockOutDays > 0 && (
+                      {summary.missingClockOutDays > 0 && (
                         <span className="ml-2 text-xs font-normal text-rose-600">
-                          （退勤打刻なし {missingClockOutDays} 日）
+                          （退勤打刻なし {summary.missingClockOutDays} 日）
                         </span>
                       )}
                     </td>
@@ -221,13 +238,13 @@ export default async function TeamAttendanceUserPage({
                       className="px-3 py-3 text-sm text-muted-foreground"
                       colSpan={2}
                     >
-                      勤務 {workedDays} 日
+                      勤務 {summary.workedDays} 日
                     </td>
                     <td className="px-3 py-3 font-mono">
-                      {fmtMinutes(totalBreakMin)}
+                      {fmtMinutes(summary.totalBreakMinutes)}
                     </td>
                     <td className="px-3 py-3 font-mono text-base">
-                      {fmtMinutes(totalMin)}
+                      {fmtMinutes(summary.totalWorkMinutes)}
                     </td>
                     <td className="px-3 py-3" />
                   </tr>

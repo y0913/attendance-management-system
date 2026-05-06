@@ -1,13 +1,7 @@
-import { formatInTimeZone } from 'date-fns-tz';
 import type { NextRequest } from 'next/server';
-import { JST_TIMEZONE } from '@/lib/calc/constants';
-import {
-  currentYearMonthJst,
-  summarizeMonth,
-  totalWorkMinutes,
-} from '@/lib/mock/attendance-summary';
+import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
+import { currentYearMonthJst } from '@/lib/mock/attendance-summary';
 import { getCompany } from '@/lib/mock/companies';
-import { listLeaveRequests } from '@/lib/mock/leave-requests';
 import { getMockSession } from '@/lib/mock/session';
 import { findMockUserById, listActiveUsers } from '@/lib/mock/users';
 import { csvResponse, rowsToCsv } from '@/lib/util/csv';
@@ -29,19 +23,6 @@ const fmtMinutes = (n: number): string => {
   const h = Math.floor(n / 60);
   const m = n % 60;
   return `${h}:${String(m).padStart(2, '0')}`;
-};
-
-const overlapsMonth = (
-  startDate: string,
-  endDate: string,
-  yearMonth: string,
-): boolean => {
-  const ymStart = `${yearMonth}-01`;
-  const lastDay = new Date(`${yearMonth}-01T00:00:00+09:00`);
-  lastDay.setUTCMonth(lastDay.getUTCMonth() + 1);
-  lastDay.setUTCDate(0);
-  const ymEnd = formatInTimeZone(lastDay, JST_TIMEZONE, 'yyyy-MM-dd');
-  return !(endDate < ymStart || startDate > ymEnd);
 };
 
 export async function GET(request: NextRequest): Promise<Response> {
@@ -72,18 +53,10 @@ export async function GET(request: NextRequest): Promise<Response> {
     '退勤未打刻日数',
     '承認済有給日数',
     '承認者',
+    '締め状態',
   ];
   const body: unknown[][] = users.map((u) => {
-    const summaries = summarizeMonth(u.id, ym);
-    const workedDays = summaries.filter((s) => s.workMinutes != null).length;
-    const total = totalWorkMinutes(summaries);
-    const missing = summaries.filter((s) => s.clockIn && !s.clockOut).length;
-    const approvedLeaves = listLeaveRequests(u.id)
-      .filter(
-        (r) =>
-          r.status === 'approved' && overlapsMonth(r.startDate, r.endDate, ym),
-      )
-      .reduce((sum, r) => sum + r.days, 0);
+    const summary = getEffectiveMonthlySummary(u.id, ym);
     const manager = u.managerId ? findMockUserById(u.managerId) : null;
     return [
       u.id,
@@ -92,11 +65,12 @@ export async function GET(request: NextRequest): Promise<Response> {
       ROLE_LABEL[u.role],
       EMPLOYMENT_LABEL[u.employmentType],
       u.baseSalary ?? '',
-      workedDays,
-      fmtMinutes(total),
-      missing,
-      approvedLeaves,
+      summary.workedDays,
+      fmtMinutes(summary.totalWorkMinutes),
+      summary.missingClockOutDays,
+      summary.approvedLeaveDays,
       manager?.name ?? '',
+      summary.isClosed ? '締め済み' : '未締め',
     ];
   });
 
@@ -105,9 +79,7 @@ export async function GET(request: NextRequest): Promise<Response> {
     ['対象月', ym],
     [
       '締日',
-      company.closingDay === 0
-        ? '月末'
-        : `毎月 ${company.closingDay} 日`,
+      company.closingDay === 0 ? '月末' : `毎月 ${company.closingDay} 日`,
     ],
     [],
   ];

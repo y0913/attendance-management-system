@@ -125,3 +125,38 @@ export function closeMonth(
   store.push(closing);
   return closing;
 }
+
+export interface EffectiveMonthlySummary {
+  isClosed: boolean;
+  closedAt: Date | null;
+  closedById: string | null;
+  yearMonth: string;
+  workedDays: number;
+  totalWorkMinutes: number;
+  totalBreakMinutes: number;
+  missingClockOutDays: number;
+  approvedLeaveDays: number;
+  daily: DailyClosingEntry[];
+}
+
+export function getEffectiveMonthlySummary(
+  userId: string,
+  yearMonth: string,
+): EffectiveMonthlySummary {
+  const closing = findClosing(userId, yearMonth);
+  if (closing) {
+    return {
+      isClosed: true,
+      closedAt: closing.closedAt,
+      closedById: closing.closedById,
+      ...closing.snapshot,
+    };
+  }
+  const snapshot = buildClosingSnapshot(userId, yearMonth);
+  return {
+    isClosed: false,
+    closedAt: null,
+    closedById: null,
+    ...snapshot,
+  };
+}

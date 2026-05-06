@@ -10,11 +10,10 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
+import { getEffectiveMonthlySummary } from '@/lib/mock/attendance-closings';
 import {
   currentYearMonthJst,
   shiftYearMonth,
-  summarizeMonth,
-  totalWorkMinutes,
 } from '@/lib/mock/attendance-summary';
 import { countPendingForApprover } from '@/lib/mock/pending-approvals';
 import { getMockSession } from '@/lib/mock/session';
@@ -57,17 +56,18 @@ interface RowData {
   totalWorkMin: number;
   totalBreakMin: number;
   missingClockOutDays: number;
+  isClosed: boolean;
 }
 
 const summarizeUser = (user: MockUser, ym: string): RowData => {
-  const summaries = summarizeMonth(user.id, ym);
+  const summary = getEffectiveMonthlySummary(user.id, ym);
   return {
     user,
-    workedDays: summaries.filter((s) => s.workMinutes != null).length,
-    totalWorkMin: totalWorkMinutes(summaries),
-    totalBreakMin: summaries.reduce((sum, s) => sum + s.breakMinutes, 0),
-    missingClockOutDays: summaries.filter((s) => s.clockIn && !s.clockOut)
-      .length,
+    workedDays: summary.workedDays,
+    totalWorkMin: summary.totalWorkMinutes,
+    totalBreakMin: summary.totalBreakMinutes,
+    missingClockOutDays: summary.missingClockOutDays,
+    isClosed: summary.isClosed,
   };
 };
 
@@ -245,7 +245,7 @@ export default async function AdminAttendancePage({
                       <th className="px-3 py-2 font-medium">勤務日数</th>
                       <th className="px-3 py-2 font-medium">合計勤務</th>
                       <th className="px-3 py-2 font-medium">合計休憩</th>
-                      <th className="px-3 py-2 font-medium">アラート</th>
+                      <th className="px-3 py-2 font-medium">状態</th>
                       <th className="px-3 py-2 font-medium" />
                     </tr>
                   </thead>
@@ -286,13 +286,23 @@ export default async function AdminAttendancePage({
                             {fmtMinutes(r.totalBreakMin)}
                           </td>
                           <td className="px-3 py-3 text-xs">
-                            {r.missingClockOutDays > 0 ? (
-                              <span className="rounded-full bg-rose-100 px-2 py-0.5 font-medium text-rose-900">
-                                退勤未打刻 {r.missingClockOutDays} 日
-                              </span>
-                            ) : (
-                              <span className="text-muted-foreground">-</span>
-                            )}
+                            <div className="flex flex-wrap gap-1">
+                              {r.isClosed && (
+                                <span className="rounded-full bg-indigo-100 px-2 py-0.5 font-medium text-indigo-900">
+                                  締め済み
+                                </span>
+                              )}
+                              {r.missingClockOutDays > 0 && (
+                                <span className="rounded-full bg-rose-100 px-2 py-0.5 font-medium text-rose-900">
+                                  退勤未打刻 {r.missingClockOutDays} 日
+                                </span>
+                              )}
+                              {!r.isClosed && r.missingClockOutDays === 0 && (
+                                <span className="text-muted-foreground">
+                                  -
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="px-3 py-3 text-right">
                             <Link

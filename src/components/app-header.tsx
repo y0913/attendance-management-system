@@ -117,44 +117,46 @@ export function AppHeader({
 
   return (
     <header className="border-b bg-background">
-      <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-6">
-          <div>
-            <p className="text-sm text-muted-foreground">勤怠管理システム</p>
-            <p className="text-base font-semibold">
-              {user.name}{' '}
-              <span className="ml-2 text-xs text-muted-foreground">
-                {ROLE_LABEL[user.role]}
-              </span>
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+        <p className="text-base font-bold tracking-tight whitespace-nowrap">
+          勤怠管理システム
+        </p>
+
+        <nav className="flex flex-1 flex-wrap items-center gap-1 text-sm">
+          {items.map((item) => {
+            const isActive = item.key === active;
+            return (
+              <Link
+                key={item.key}
+                href={item.href}
+                className={`rounded-md px-3 py-1.5 ${
+                  isActive ? 'bg-muted font-medium' : 'hover:bg-muted'
+                }`}
+              >
+                {item.label}
+                {item.badge != null && item.badge > 0 && (
+                  <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                    {item.badge}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
+        </nav>
+
+        <div className="flex items-center gap-3 whitespace-nowrap">
+          <div className="text-right leading-tight">
+            <p className="text-sm font-semibold">{user.name}</p>
+            <p className="text-xs text-muted-foreground">
+              {ROLE_LABEL[user.role]}
             </p>
           </div>
-          <nav className="flex flex-wrap gap-2 text-sm">
-            {items.map((item) => {
-              const isActive = item.key === active;
-              return (
-                <Link
-                  key={item.key}
-                  href={item.href}
-                  className={`rounded-md px-3 py-1.5 ${
-                    isActive ? 'bg-muted font-medium' : 'hover:bg-muted'
-                  }`}
-                >
-                  {item.label}
-                  {item.badge != null && item.badge > 0 && (
-                    <span className="ml-1.5 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-rose-600 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
-                      {item.badge}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
+          <form action={signOutAction}>
+            <Button type="submit" variant="outline" size="sm">
+              サインアウト
+            </Button>
+          </form>
         </div>
-        <form action={signOutAction}>
-          <Button type="submit" variant="outline" size="sm">
-            サインアウト
-          </Button>
-        </form>
       </div>
     </header>
   );
