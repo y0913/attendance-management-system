@@ -17,7 +17,8 @@ export type NavKey =
   | 'team-attendance'
   | 'team-approvals'
   | 'admin-dashboard'
-  | 'admin-approvals';
+  | 'admin-approvals'
+  | 'admin-employees';
 
 interface NavItem {
   key: NavKey;
@@ -68,6 +69,11 @@ export function AppHeader({
             key: 'admin-approvals',
             href: '/admin/approvals',
             label: '全社の承認',
+          },
+          {
+            key: 'admin-employees',
+            href: '/admin/employees',
+            label: '従業員',
           },
         ]
       : [];
