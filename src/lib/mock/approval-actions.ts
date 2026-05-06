@@ -1,15 +1,22 @@
-export type ApprovalActionType =
-  | 'submit'
-  | 'approve'
-  | 'reject'
-  | 'withdraw'
-  | 'return';
+// Phase 4: 内部を Prisma 経由に書き換え。すべて async。
+//
+// 型差異: mock の requestType は 'correction'/'leave'、Prisma は
+// 'clock_correction'/'leave_request'。マッパーで変換。
 
-export type ApprovalRequestType = 'correction' | 'leave';
+import type {
+  ApprovalAction,
+  ApprovalActionType,
+  ApprovalRequestType,
+} from '@prisma/client';
+import { prisma } from '@/lib/db';
+
+export type { ApprovalActionType };
+
+export type AppRequestType = 'correction' | 'leave';
 
 export interface MockApprovalAction {
   id: string;
-  requestType: ApprovalRequestType;
+  requestType: AppRequestType;
   requestId: string;
   actorId: string;
   action: ApprovalActionType;
@@ -19,10 +26,24 @@ export interface MockApprovalAction {
 
 export const APPROVAL_COMMENT_MAX_LENGTH = 500;
 
-const store: MockApprovalAction[] = [];
+const toPrismaRequestType = (t: AppRequestType): ApprovalRequestType =>
+  t === 'correction' ? 'clock_correction' : 'leave_request';
+
+const toAppRequestType = (t: ApprovalRequestType): AppRequestType =>
+  t === 'clock_correction' ? 'correction' : 'leave';
+
+const toMockApprovalAction = (a: ApprovalAction): MockApprovalAction => ({
+  id: a.id,
+  requestType: toAppRequestType(a.requestType),
+  requestId: a.requestId,
+  actorId: a.actorId,
+  action: a.action,
+  comment: a.comment,
+  createdAt: a.createdAt,
+});
 
 interface RecordInput {
-  requestType: ApprovalRequestType;
+  requestType: AppRequestType;
   requestId: string;
   actorId: string;
   action: ApprovalActionType;
@@ -30,28 +51,34 @@ interface RecordInput {
   createdAt?: Date;
 }
 
-export function recordApprovalAction(input: RecordInput): MockApprovalAction {
-  const action: MockApprovalAction = {
-    id: `apa_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    requestType: input.requestType,
-    requestId: input.requestId,
-    actorId: input.actorId,
-    action: input.action,
-    comment: input.comment ?? null,
-    createdAt: input.createdAt ?? new Date(),
-  };
-  store.push(action);
-  return action;
+export async function recordApprovalAction(
+  input: RecordInput,
+): Promise<MockApprovalAction> {
+  const created = await prisma.approvalAction.create({
+    data: {
+      requestType: toPrismaRequestType(input.requestType),
+      requestId: input.requestId,
+      actorId: input.actorId,
+      action: input.action,
+      comment: input.comment ?? null,
+      createdAt: input.createdAt,
+    },
+  });
+  return toMockApprovalAction(created);
 }
 
-export function listApprovalActions(
-  requestType: ApprovalRequestType,
+export async function listApprovalActions(
+  requestType: AppRequestType,
   requestId: string,
-): MockApprovalAction[] {
-  return store
-    .filter((a) => a.requestType === requestType && a.requestId === requestId)
-    .slice()
-    .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+): Promise<MockApprovalAction[]> {
+  const list = await prisma.approvalAction.findMany({
+    where: {
+      requestType: toPrismaRequestType(requestType),
+      requestId,
+    },
+    orderBy: { createdAt: 'asc' },
+  });
+  return list.map(toMockApprovalAction);
 }
 
 export const APPROVAL_ACTION_LABEL: Record<ApprovalActionType, string> = {

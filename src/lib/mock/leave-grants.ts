@@ -28,7 +28,7 @@ export async function getUserLeaveBalance(
   if (!user) return null;
 
   const grants = computeLegalGrants(user.hiredAt, asOf);
-  const totalApprovedDays = listLeaveRequests(userId)
+  const totalApprovedDays = (await listLeaveRequests(userId))
     .filter((r) => r.status === 'approved')
     .reduce((sum, r) => sum + r.days, 0);
 

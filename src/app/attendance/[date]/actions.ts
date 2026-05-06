@@ -80,7 +80,7 @@ export async function submitCorrectionAction(input: {
     };
   }
 
-  const existing = findActiveCorrection(session.id, parsed.data.jstDate);
+  const existing = await findActiveCorrection(session.id, parsed.data.jstDate);
   if (existing) {
     return {
       ok: false,

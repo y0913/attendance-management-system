@@ -48,7 +48,7 @@ export default async function EmployeesPage({
   const visible = showInactive
     ? allUsers
     : allUsers.filter((u) => u.deactivatedAt === null);
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
 
   const activeCount = allUsers.filter((u) => u.deactivatedAt === null).length;
   const inactiveCount = allUsers.length - activeCount;

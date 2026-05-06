@@ -100,9 +100,9 @@ export default async function AdminDashboardPage() {
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
   const userIds = allUsers.map((u) => u.id);
   const clockStates = await countClockStates(userIds, now);
-  const pendingCompany = countAllPending();
-  const myPending = countPendingForApprover(session.id);
-  const recentRows = listAllRecentRequests(8).map((item) =>
+  const pendingCompany = await countAllPending();
+  const myPending = await countPendingForApprover(session.id);
+  const recentRows = (await listAllRecentRequests(8)).map((item) =>
     itemToRow(item, userNameById),
   );
   const previousYm = shiftYearMonth(currentYearMonthJst(now), -1);

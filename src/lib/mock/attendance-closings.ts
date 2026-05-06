@@ -73,7 +73,7 @@ export async function buildClosingSnapshot(
     (s) => s.clockIn && !s.clockOut,
   ).length;
 
-  const approvedLeaveDays = listLeaveRequests(userId)
+  const approvedLeaveDays = (await listLeaveRequests(userId))
     .filter(
       (r) =>
         r.status === 'approved' &&

@@ -75,6 +75,11 @@ enum LeaveType {
   annual
 }
 
+enum LeaveDayUnit {
+  full
+  half
+}
+
 enum LeaveGrantSource {
   legal_auto
   manual
@@ -228,6 +233,7 @@ model ClockCorrectionRequest {
   targetDate        DateTime      @map("target_date") @db.Date
   beforePayload     Json          @map("before_payload")
   afterPayload      Json          @map("after_payload")
+  decidedAt         DateTime?     @map("decided_at")
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 
@@ -247,9 +253,11 @@ model LeaveRequest {
   submittedAt       DateTime?     @map("submitted_at")
   reason            String
   leaveType         LeaveType     @default(annual) @map("leave_type")
+  dayUnit           LeaveDayUnit  @default(full) @map("day_unit")
   startDate         DateTime      @map("start_date") @db.Date
   endDate           DateTime      @map("end_date") @db.Date
   days              Decimal       @db.Decimal(4, 1)
+  decidedAt         DateTime?     @map("decided_at")
   createdAt         DateTime      @default(now()) @map("created_at")
   updatedAt         DateTime      @updatedAt @map("updated_at")
 

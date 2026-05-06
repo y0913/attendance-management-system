@@ -55,7 +55,7 @@ export default async function EditWorkRulePage({
   const versions = listWorkRuleVersions();
   const status = classifyVersionStatus(target, versions);
   const isFuture = status === 'future';
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
   const creator = await findMockUserById(target.createdById);
 
   return (

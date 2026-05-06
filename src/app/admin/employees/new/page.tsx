@@ -26,7 +26,7 @@ export default async function NewEmployeePage() {
   if (session.role !== 'admin') redirect('/clock');
 
   const today = formatInTimeZone(new Date(), JST_TIMEZONE, 'yyyy-MM-dd');
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
   const managerCandidates = (await listAllUsers())
     .filter((u) => u.deactivatedAt === null)
     .filter((u) => u.role === 'admin' || u.role === 'approver')

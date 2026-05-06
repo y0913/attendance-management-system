@@ -1,8 +1,14 @@
+// Phase 4: 内部を Prisma 経由に書き換え。すべて async。
+//
+// Prisma の DateTime ↔ mock の 'yyyy-MM-dd' 文字列、Json ↔ ClockSnapshot は
+// マッパー関数で変換する。
+
 import { formatInTimeZone } from 'date-fns-tz';
+import type { ClockCorrectionRequest, RequestStatus } from '@prisma/client';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { findMockUserById } from './users';
+import { prisma } from '@/lib/db';
 import { listClocksForDate, replaceClocksForDate } from './time-clocks';
-import { buildSeedCorrections } from './seed-clock-corrections';
+import { findMockUserById } from './users';
 
 export type ClockCorrectionStatus =
   | 'submitted'
@@ -33,115 +39,114 @@ export interface MockClockCorrectionRequest {
 
 export const REASON_MAX_LENGTH = 500;
 
-const store: MockClockCorrectionRequest[] = [];
+const toJstDateString = (d: Date): string =>
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
 
-let seeded = false;
-function ensureSeeded(): void {
-  if (seeded) return;
-  seeded = true;
-  for (const r of buildSeedCorrections()) {
-    store.push({
-      id: `ccr_seed_${store.length}`,
-      requesterId: r.requesterId,
-      status: r.status,
-      currentApproverId: r.approverId,
-      submittedAt: r.submittedAt,
-      decidedAt: r.decidedAt,
-      reason: r.reason,
-      targetDate: r.targetDate,
-      beforePayload: r.before,
-      afterPayload: r.after,
-    });
-  }
-}
+const toJstDate = (jstDate: string): Date =>
+  new Date(`${jstDate}T00:00:00+09:00`);
 
-export function listCorrectionRequests(
+const toMockCorrection = (
+  r: ClockCorrectionRequest,
+): MockClockCorrectionRequest => ({
+  id: r.id,
+  requesterId: r.requesterId,
+  status: r.status as ClockCorrectionStatus,
+  currentApproverId: r.currentApproverId,
+  submittedAt: r.submittedAt ?? r.createdAt,
+  decidedAt: r.decidedAt,
+  reason: r.reason,
+  targetDate: toJstDateString(r.targetDate),
+  beforePayload: r.beforePayload as unknown as ClockSnapshot,
+  afterPayload: r.afterPayload as unknown as ClockSnapshot,
+});
+
+export async function listCorrectionRequests(
   userId: string,
-): MockClockCorrectionRequest[] {
-  ensureSeeded();
-  return store
-    .filter((r) => r.requesterId === userId)
-    .slice()
-    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+): Promise<MockClockCorrectionRequest[]> {
+  const list = await prisma.clockCorrectionRequest.findMany({
+    where: { requesterId: userId },
+    orderBy: { submittedAt: 'desc' },
+  });
+  return list.map(toMockCorrection);
 }
 
-export function findActiveCorrection(
+export async function findActiveCorrection(
   userId: string,
   targetDate: string,
-): MockClockCorrectionRequest | null {
-  ensureSeeded();
-  return (
-    store.find(
-      (r) =>
-        r.requesterId === userId &&
-        r.targetDate === targetDate &&
-        r.status === 'submitted',
-    ) ?? null
-  );
+): Promise<MockClockCorrectionRequest | null> {
+  const r = await prisma.clockCorrectionRequest.findFirst({
+    where: {
+      requesterId: userId,
+      targetDate: toJstDate(targetDate),
+      status: 'submitted',
+    },
+  });
+  return r ? toMockCorrection(r) : null;
 }
 
-export function findCorrectionById(
+export async function findCorrectionById(
   id: string,
-): MockClockCorrectionRequest | null {
-  ensureSeeded();
-  return store.find((r) => r.id === id) ?? null;
+): Promise<MockClockCorrectionRequest | null> {
+  const r = await prisma.clockCorrectionRequest.findUnique({ where: { id } });
+  return r ? toMockCorrection(r) : null;
 }
 
-export function listCorrectionRequestsForUserDate(
+export async function listCorrectionRequestsForUserDate(
   userId: string,
   targetDate: string,
-): MockClockCorrectionRequest[] {
-  ensureSeeded();
-  return store
-    .filter((r) => r.requesterId === userId && r.targetDate === targetDate)
-    .slice()
-    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+): Promise<MockClockCorrectionRequest[]> {
+  const list = await prisma.clockCorrectionRequest.findMany({
+    where: { requesterId: userId, targetDate: toJstDate(targetDate) },
+    orderBy: { submittedAt: 'desc' },
+  });
+  return list.map(toMockCorrection);
 }
 
-export function listPendingCorrectionsForApprover(
+export async function listPendingCorrectionsForApprover(
   approverId: string,
-): MockClockCorrectionRequest[] {
-  ensureSeeded();
-  return store
-    .filter(
-      (r) =>
-        r.currentApproverId === approverId && r.status === 'submitted',
-    )
-    .slice()
-    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+): Promise<MockClockCorrectionRequest[]> {
+  const list = await prisma.clockCorrectionRequest.findMany({
+    where: { currentApproverId: approverId, status: 'submitted' },
+    orderBy: { submittedAt: 'asc' },
+  });
+  return list.map(toMockCorrection);
 }
 
-export function listAllPendingCorrections(): MockClockCorrectionRequest[] {
-  ensureSeeded();
-  return store
-    .filter((r) => r.status === 'submitted')
-    .slice()
-    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+export async function listAllPendingCorrections(): Promise<
+  MockClockCorrectionRequest[]
+> {
+  const list = await prisma.clockCorrectionRequest.findMany({
+    where: { status: 'submitted' },
+    orderBy: { submittedAt: 'asc' },
+  });
+  return list.map(toMockCorrection);
 }
 
-export function listAllCorrections(): MockClockCorrectionRequest[] {
-  ensureSeeded();
-  return store
-    .slice()
-    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+export async function listAllCorrections(): Promise<
+  MockClockCorrectionRequest[]
+> {
+  const list = await prisma.clockCorrectionRequest.findMany({
+    orderBy: { submittedAt: 'desc' },
+  });
+  return list.map(toMockCorrection);
 }
 
-const fmt = (d: Date): string =>
+const fmtTime = (d: Date): string =>
   formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
 
 export async function captureCurrentSnapshot(
   userId: string,
   targetDate: string,
 ): Promise<ClockSnapshot> {
-  const dayDate = new Date(`${targetDate}T00:00:00+09:00`);
+  const dayDate = toJstDate(targetDate);
   const clocks = await listClocksForDate(userId, dayDate);
   const find = (t: string) =>
     clocks.find((c) => c.type === t)?.occurredAt ?? null;
   return {
-    clockIn: find('clock_in') ? fmt(find('clock_in') as Date) : null,
-    clockOut: find('clock_out') ? fmt(find('clock_out') as Date) : null,
-    breakStart: find('break_start') ? fmt(find('break_start') as Date) : null,
-    breakEnd: find('break_end') ? fmt(find('break_end') as Date) : null,
+    clockIn: find('clock_in') ? fmtTime(find('clock_in') as Date) : null,
+    clockOut: find('clock_out') ? fmtTime(find('clock_out') as Date) : null,
+    breakStart: find('break_start') ? fmtTime(find('break_start') as Date) : null,
+    breakEnd: find('break_end') ? fmtTime(find('break_end') as Date) : null,
   };
 }
 
@@ -156,35 +161,34 @@ export interface SubmitCorrectionInput {
 export async function submitCorrection(
   input: SubmitCorrectionInput,
 ): Promise<MockClockCorrectionRequest> {
-  ensureSeeded();
   const requester = await findMockUserById(input.requesterId);
   const approverId = requester?.managerId ?? null;
-  const req: MockClockCorrectionRequest = {
-    id: `ccr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    requesterId: input.requesterId,
-    status: 'submitted',
-    currentApproverId: approverId,
-    submittedAt: new Date(),
-    decidedAt: null,
-    reason: input.reason,
-    targetDate: input.targetDate,
-    beforePayload: input.before,
-    afterPayload: input.after,
-  };
-  store.push(req);
-  return req;
+  const created = await prisma.clockCorrectionRequest.create({
+    data: {
+      requesterId: input.requesterId,
+      currentApproverId: approverId,
+      status: 'submitted',
+      submittedAt: new Date(),
+      reason: input.reason,
+      targetDate: toJstDate(input.targetDate),
+      beforePayload: input.before as object,
+      afterPayload: input.after as object,
+    },
+  });
+  return toMockCorrection(created);
 }
 
 export type WithdrawCorrectionResult =
   | { ok: true; request: MockClockCorrectionRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export function withdrawCorrection(input: {
+export async function withdrawCorrection(input: {
   id: string;
   requesterId: string;
-}): WithdrawCorrectionResult {
-  ensureSeeded();
-  const req = store.find((r) => r.id === input.id);
+}): Promise<WithdrawCorrectionResult> {
+  const req = await prisma.clockCorrectionRequest.findUnique({
+    where: { id: input.id },
+  });
   if (!req) return { ok: false, reason: 'NOT_FOUND' };
   if (req.requesterId !== input.requesterId) {
     return { ok: false, reason: 'FORBIDDEN' };
@@ -192,10 +196,15 @@ export function withdrawCorrection(input: {
   if (req.status !== 'submitted') {
     return { ok: false, reason: 'NOT_PENDING' };
   }
-  req.status = 'withdrawn';
-  req.decidedAt = new Date();
-  req.currentApproverId = null;
-  return { ok: true, request: req };
+  const updated = await prisma.clockCorrectionRequest.update({
+    where: { id: input.id },
+    data: {
+      status: 'withdrawn',
+      decidedAt: new Date(),
+      currentApproverId: null,
+    },
+  });
+  return { ok: true, request: toMockCorrection(updated) };
 }
 
 export type CorrectionDecision = 'approve' | 'reject' | 'return';
@@ -210,8 +219,9 @@ export async function decideCorrection(input: {
   decision: CorrectionDecision;
   isAdmin: boolean;
 }): Promise<DecideCorrectionResult> {
-  ensureSeeded();
-  const req = store.find((r) => r.id === input.id);
+  const req = await prisma.clockCorrectionRequest.findUnique({
+    where: { id: input.id },
+  });
   if (!req) return { ok: false, reason: 'NOT_FOUND' };
   if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
     return { ok: false, reason: 'FORBIDDEN' };
@@ -220,25 +230,27 @@ export async function decideCorrection(input: {
     return { ok: false, reason: 'NOT_PENDING' };
   }
 
-  const nextStatus: ClockCorrectionStatus =
+  const nextStatus: RequestStatus =
     input.decision === 'approve'
       ? 'approved'
       : input.decision === 'reject'
         ? 'rejected'
         : 'returned';
 
-  req.status = nextStatus;
-  req.decidedAt = new Date();
+  const updated = await prisma.clockCorrectionRequest.update({
+    where: { id: input.id },
+    data: { status: nextStatus, decidedAt: new Date() },
+  });
 
   if (nextStatus === 'approved') {
     await replaceClocksForDate(
       req.requesterId,
-      req.targetDate,
-      req.afterPayload,
+      toJstDateString(req.targetDate),
+      req.afterPayload as unknown as ClockSnapshot,
     );
   }
 
-  return { ok: true, request: req };
+  return { ok: true, request: toMockCorrection(updated) };
 }
 
 export const STATUS_LABEL: Record<ClockCorrectionStatus, string> = {

@@ -133,18 +133,18 @@ export default async function ApprovalDetailPage({
   const { type, id } = await params;
   if (!isValidType(type)) notFound();
 
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
   const allUsers = await listAllUsers();
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 
   if (type === 'correction') {
-    const r = findCorrectionById(id);
+    const r = await findCorrectionById(id);
     if (!r) notFound();
     if (session.role !== 'admin' && r.currentApproverId !== session.id) {
       redirect('/team/approvals');
     }
     const requester = await findMockUserById(r.requesterId);
-    const history = listApprovalActions('correction', r.id);
+    const history = await listApprovalActions('correction', r.id);
     const isPending = r.status === 'submitted';
 
     return (
@@ -239,13 +239,13 @@ export default async function ApprovalDetailPage({
   }
 
   // leave
-  const r = findLeaveRequestById(id);
+  const r = await findLeaveRequestById(id);
   if (!r) notFound();
   if (session.role !== 'admin' && r.currentApproverId !== session.id) {
     redirect('/team/approvals');
   }
   const requester = await findMockUserById(r.requesterId);
-  const history = listApprovalActions('leave', r.id);
+  const history = await listApprovalActions('leave', r.id);
   const isPending = r.status === 'submitted';
 
   return (

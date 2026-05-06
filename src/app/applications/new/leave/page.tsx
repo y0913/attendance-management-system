@@ -31,7 +31,7 @@ export default async function NewLeaveRequestPage() {
     'yyyy-MM-dd',
   );
   const defaultEnd = defaultStart;
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

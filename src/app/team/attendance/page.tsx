@@ -29,7 +29,7 @@ export default async function TeamAttendancePage() {
   }
 
   const subordinates = await findSubordinates(session.id);
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

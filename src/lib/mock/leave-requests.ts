@@ -1,6 +1,16 @@
+// Phase 4: 内部を Prisma 経由に書き換え。すべて async。
+//
+// 型差異:
+// - mock leaveType 'paid' ↔ Prisma 'annual' (mock 側の意味は変わらず、APIだけ揃える)
+// - days: number ↔ Prisma Decimal(4,1) (Number() で変換)
+// - startDate/endDate: 'yyyy-MM-dd' ↔ DateTime @db.Date
+
+import type { LeaveDayUnit, LeaveRequest, RequestStatus } from '@prisma/client';
+import { formatInTimeZone } from 'date-fns-tz';
+import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { countBusinessDaysBetween } from '@/lib/calc/weekday-count';
+import { prisma } from '@/lib/db';
 import { findMockUserById } from './users';
-import { buildSeedLeaves } from './seed-leave-requests';
 
 export { countBusinessDaysBetween };
 
@@ -12,7 +22,7 @@ export type LeaveRequestStatus =
   | 'returned';
 
 export type LeaveType = 'paid';
-export type LeaveDayUnit = 'full' | 'half';
+export type { LeaveDayUnit };
 
 export interface MockLeaveRequest {
   id: string;
@@ -31,69 +41,67 @@ export interface MockLeaveRequest {
 
 export const LEAVE_REASON_MAX_LENGTH = 500;
 
-const store: MockLeaveRequest[] = [];
+const toJstDateString = (d: Date): string =>
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
 
-let seeded = false;
-function ensureSeeded(): void {
-  if (seeded) return;
-  seeded = true;
-  for (const r of buildSeedLeaves()) {
-    store.push({
-      id: `lr_seed_${store.length}`,
-      requesterId: r.requesterId,
-      status: r.status,
-      currentApproverId: r.approverId,
-      submittedAt: r.submittedAt,
-      decidedAt: r.decidedAt,
-      reason: r.reason,
-      leaveType: r.leaveType,
-      dayUnit: r.dayUnit,
-      startDate: r.startDate,
-      endDate: r.endDate,
-      days: r.days,
-    });
-  }
+const toJstDate = (jstDate: string): Date =>
+  new Date(`${jstDate}T00:00:00+09:00`);
+
+const toMockLeave = (r: LeaveRequest): MockLeaveRequest => ({
+  id: r.id,
+  requesterId: r.requesterId,
+  status: r.status as LeaveRequestStatus,
+  currentApproverId: r.currentApproverId,
+  submittedAt: r.submittedAt ?? r.createdAt,
+  decidedAt: r.decidedAt,
+  reason: r.reason,
+  leaveType: 'paid', // Prisma 'annual' を mock の 'paid' にマップ
+  dayUnit: r.dayUnit,
+  startDate: toJstDateString(r.startDate),
+  endDate: toJstDateString(r.endDate),
+  days: Number(r.days),
+});
+
+export async function listLeaveRequests(
+  userId: string,
+): Promise<MockLeaveRequest[]> {
+  const list = await prisma.leaveRequest.findMany({
+    where: { requesterId: userId },
+    orderBy: { submittedAt: 'desc' },
+  });
+  return list.map(toMockLeave);
 }
 
-export function listLeaveRequests(userId: string): MockLeaveRequest[] {
-  ensureSeeded();
-  return store
-    .filter((r) => r.requesterId === userId)
-    .slice()
-    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+export async function findLeaveRequestById(
+  id: string,
+): Promise<MockLeaveRequest | null> {
+  const r = await prisma.leaveRequest.findUnique({ where: { id } });
+  return r ? toMockLeave(r) : null;
 }
 
-export function findLeaveRequestById(id: string): MockLeaveRequest | null {
-  ensureSeeded();
-  return store.find((r) => r.id === id) ?? null;
-}
-
-export function listPendingLeavesForApprover(
+export async function listPendingLeavesForApprover(
   approverId: string,
-): MockLeaveRequest[] {
-  ensureSeeded();
-  return store
-    .filter(
-      (r) =>
-        r.currentApproverId === approverId && r.status === 'submitted',
-    )
-    .slice()
-    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+): Promise<MockLeaveRequest[]> {
+  const list = await prisma.leaveRequest.findMany({
+    where: { currentApproverId: approverId, status: 'submitted' },
+    orderBy: { submittedAt: 'asc' },
+  });
+  return list.map(toMockLeave);
 }
 
-export function listAllPendingLeaves(): MockLeaveRequest[] {
-  ensureSeeded();
-  return store
-    .filter((r) => r.status === 'submitted')
-    .slice()
-    .sort((a, b) => a.submittedAt.getTime() - b.submittedAt.getTime());
+export async function listAllPendingLeaves(): Promise<MockLeaveRequest[]> {
+  const list = await prisma.leaveRequest.findMany({
+    where: { status: 'submitted' },
+    orderBy: { submittedAt: 'asc' },
+  });
+  return list.map(toMockLeave);
 }
 
-export function listAllLeaves(): MockLeaveRequest[] {
-  ensureSeeded();
-  return store
-    .slice()
-    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+export async function listAllLeaves(): Promise<MockLeaveRequest[]> {
+  const list = await prisma.leaveRequest.findMany({
+    orderBy: { submittedAt: 'desc' },
+  });
+  return list.map(toMockLeave);
 }
 
 export interface SubmitLeaveInput {
@@ -112,7 +120,6 @@ export type SubmitLeaveResult =
 export async function submitLeave(
   input: SubmitLeaveInput,
 ): Promise<SubmitLeaveResult> {
-  ensureSeeded();
   if (input.dayUnit === 'half' && input.startDate !== input.endDate) {
     return { ok: false, reason: 'HALF_DAY_REQUIRES_SINGLE_DATE' };
   }
@@ -122,34 +129,32 @@ export async function submitLeave(
     input.dayUnit === 'half'
       ? 0.5
       : countBusinessDaysBetween(input.startDate, input.endDate);
-  const req: MockLeaveRequest = {
-    id: `lr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    requesterId: input.requesterId,
-    status: 'submitted',
-    currentApproverId: approverId,
-    submittedAt: new Date(),
-    decidedAt: null,
-    reason: input.reason,
-    leaveType: input.leaveType,
-    dayUnit: input.dayUnit,
-    startDate: input.startDate,
-    endDate: input.endDate,
-    days,
-  };
-  store.push(req);
-  return { ok: true, request: req };
+  const created = await prisma.leaveRequest.create({
+    data: {
+      requesterId: input.requesterId,
+      currentApproverId: approverId,
+      status: 'submitted',
+      submittedAt: new Date(),
+      reason: input.reason,
+      leaveType: 'annual',
+      dayUnit: input.dayUnit,
+      startDate: toJstDate(input.startDate),
+      endDate: toJstDate(input.endDate),
+      days,
+    },
+  });
+  return { ok: true, request: toMockLeave(created) };
 }
 
 export type WithdrawLeaveResult =
   | { ok: true; request: MockLeaveRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export function withdrawLeave(input: {
+export async function withdrawLeave(input: {
   id: string;
   requesterId: string;
-}): WithdrawLeaveResult {
-  ensureSeeded();
-  const req = store.find((r) => r.id === input.id);
+}): Promise<WithdrawLeaveResult> {
+  const req = await prisma.leaveRequest.findUnique({ where: { id: input.id } });
   if (!req) return { ok: false, reason: 'NOT_FOUND' };
   if (req.requesterId !== input.requesterId) {
     return { ok: false, reason: 'FORBIDDEN' };
@@ -157,10 +162,15 @@ export function withdrawLeave(input: {
   if (req.status !== 'submitted') {
     return { ok: false, reason: 'NOT_PENDING' };
   }
-  req.status = 'withdrawn';
-  req.decidedAt = new Date();
-  req.currentApproverId = null;
-  return { ok: true, request: req };
+  const updated = await prisma.leaveRequest.update({
+    where: { id: input.id },
+    data: {
+      status: 'withdrawn',
+      decidedAt: new Date(),
+      currentApproverId: null,
+    },
+  });
+  return { ok: true, request: toMockLeave(updated) };
 }
 
 export type LeaveDecision = 'approve' | 'reject' | 'return';
@@ -169,14 +179,13 @@ export type DecideLeaveResult =
   | { ok: true; request: MockLeaveRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export function decideLeave(input: {
+export async function decideLeave(input: {
   id: string;
   deciderId: string;
   decision: LeaveDecision;
   isAdmin: boolean;
-}): DecideLeaveResult {
-  ensureSeeded();
-  const req = store.find((r) => r.id === input.id);
+}): Promise<DecideLeaveResult> {
+  const req = await prisma.leaveRequest.findUnique({ where: { id: input.id } });
   if (!req) return { ok: false, reason: 'NOT_FOUND' };
   if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
     return { ok: false, reason: 'FORBIDDEN' };
@@ -184,18 +193,17 @@ export function decideLeave(input: {
   if (req.status !== 'submitted') {
     return { ok: false, reason: 'NOT_PENDING' };
   }
-
-  const nextStatus: LeaveRequestStatus =
+  const nextStatus: RequestStatus =
     input.decision === 'approve'
       ? 'approved'
       : input.decision === 'reject'
         ? 'rejected'
         : 'returned';
-
-  req.status = nextStatus;
-  req.decidedAt = new Date();
-
-  return { ok: true, request: req };
+  const updated = await prisma.leaveRequest.update({
+    where: { id: input.id },
+    data: { status: nextStatus, decidedAt: new Date() },
+  });
+  return { ok: true, request: toMockLeave(updated) };
 }
 
 export const LEAVE_STATUS_LABEL: Record<LeaveRequestStatus, string> = {

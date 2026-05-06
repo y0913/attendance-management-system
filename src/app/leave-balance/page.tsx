@@ -30,7 +30,7 @@ export default async function LeaveBalancePage() {
   );
   const tenureYears = Math.floor(tenureMonths / 12);
   const tenureRemMonths = tenureMonths % 12;
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

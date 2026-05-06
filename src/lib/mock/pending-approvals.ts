@@ -15,54 +15,80 @@ export type PendingItem =
   | { kind: 'correction'; request: MockClockCorrectionRequest }
   | { kind: 'leave'; request: MockLeaveRequest };
 
-export function listPendingForApprover(approverId: string): PendingItem[] {
-  const corrections: PendingItem[] = listPendingCorrectionsForApprover(
-    approverId,
-  ).map((request) => ({ kind: 'correction', request }));
-  const leaves: PendingItem[] = listPendingLeavesForApprover(approverId).map(
-    (request) => ({ kind: 'leave', request }),
-  );
-  return [...corrections, ...leaves].sort(
-    (a, b) =>
-      a.request.submittedAt.getTime() - b.request.submittedAt.getTime(),
-  );
-}
-
-export function countPendingForApprover(approverId: string): number {
-  return (
-    listPendingCorrectionsForApprover(approverId).length +
-    listPendingLeavesForApprover(approverId).length
-  );
-}
-
-export function listAllPending(): PendingItem[] {
-  const corrections: PendingItem[] = listAllPendingCorrections().map(
-    (request) => ({ kind: 'correction', request }),
-  );
-  const leaves: PendingItem[] = listAllPendingLeaves().map((request) => ({
-    kind: 'leave',
-    request,
-  }));
-  return [...corrections, ...leaves].sort(
-    (a, b) =>
-      a.request.submittedAt.getTime() - b.request.submittedAt.getTime(),
-  );
-}
-
-export function countAllPending(): number {
-  return listAllPendingCorrections().length + listAllPendingLeaves().length;
-}
-
-export function listAllRecentRequests(limit: number): PendingItem[] {
-  const corrections: PendingItem[] = listAllCorrections().map((request) => ({
+export async function listPendingForApprover(
+  approverId: string,
+): Promise<PendingItem[]> {
+  const [corrs, leaves] = await Promise.all([
+    listPendingCorrectionsForApprover(approverId),
+    listPendingLeavesForApprover(approverId),
+  ]);
+  const corrections: PendingItem[] = corrs.map((request) => ({
     kind: 'correction',
     request,
   }));
-  const leaves: PendingItem[] = listAllLeaves().map((request) => ({
+  const leavesItems: PendingItem[] = leaves.map((request) => ({
     kind: 'leave',
     request,
   }));
-  return [...corrections, ...leaves]
+  return [...corrections, ...leavesItems].sort(
+    (a, b) =>
+      a.request.submittedAt.getTime() - b.request.submittedAt.getTime(),
+  );
+}
+
+export async function countPendingForApprover(
+  approverId: string,
+): Promise<number> {
+  const [corrs, leaves] = await Promise.all([
+    listPendingCorrectionsForApprover(approverId),
+    listPendingLeavesForApprover(approverId),
+  ]);
+  return corrs.length + leaves.length;
+}
+
+export async function listAllPending(): Promise<PendingItem[]> {
+  const [corrs, leaves] = await Promise.all([
+    listAllPendingCorrections(),
+    listAllPendingLeaves(),
+  ]);
+  const corrections: PendingItem[] = corrs.map((request) => ({
+    kind: 'correction',
+    request,
+  }));
+  const leavesItems: PendingItem[] = leaves.map((request) => ({
+    kind: 'leave',
+    request,
+  }));
+  return [...corrections, ...leavesItems].sort(
+    (a, b) =>
+      a.request.submittedAt.getTime() - b.request.submittedAt.getTime(),
+  );
+}
+
+export async function countAllPending(): Promise<number> {
+  const [corrs, leaves] = await Promise.all([
+    listAllPendingCorrections(),
+    listAllPendingLeaves(),
+  ]);
+  return corrs.length + leaves.length;
+}
+
+export async function listAllRecentRequests(
+  limit: number,
+): Promise<PendingItem[]> {
+  const [corrs, leaves] = await Promise.all([
+    listAllCorrections(),
+    listAllLeaves(),
+  ]);
+  const corrections: PendingItem[] = corrs.map((request) => ({
+    kind: 'correction',
+    request,
+  }));
+  const leavesItems: PendingItem[] = leaves.map((request) => ({
+    kind: 'leave',
+    request,
+  }));
+  return [...corrections, ...leavesItems]
     .sort(
       (a, b) =>
         b.request.submittedAt.getTime() - a.request.submittedAt.getTime(),

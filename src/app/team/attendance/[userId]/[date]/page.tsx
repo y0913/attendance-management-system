@@ -85,8 +85,8 @@ export default async function TeamAttendanceDayPage({
   const dayDate = new Date(`${jstDate}T00:00:00+09:00`);
   const clocks = await listClocksForDate(target.id, dayDate);
   const note = await getDailyNote(target.id, jstDate);
-  const corrections = listCorrectionRequestsForUserDate(target.id, jstDate);
-  const myPending = countPendingForApprover(session.id);
+  const corrections = await listCorrectionRequestsForUserDate(target.id, jstDate);
+  const myPending = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

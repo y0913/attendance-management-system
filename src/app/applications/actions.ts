@@ -30,11 +30,11 @@ export async function withdrawRequestAction(input: {
 
   const result =
     parsed.data.type === 'correction'
-      ? withdrawCorrection({
+      ? await withdrawCorrection({
           id: parsed.data.id,
           requesterId: session.id,
         })
-      : withdrawLeave({
+      : await withdrawLeave({
           id: parsed.data.id,
           requesterId: session.id,
         });

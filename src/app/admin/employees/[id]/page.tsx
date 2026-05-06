@@ -36,7 +36,7 @@ export default async function EditEmployeePage({
   const target = await findMockUserById(id);
   if (!target) notFound();
 
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
   const managerCandidates = (await listAllUsers())
     .filter((u) => u.id !== target.id) // 自分自身を承認者候補から除外
     .filter((u) => u.deactivatedAt === null)

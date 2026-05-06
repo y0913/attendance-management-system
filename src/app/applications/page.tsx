@@ -142,10 +142,10 @@ export default async function ApplicationsPage() {
 
   const allUsers = await listAllUsers();
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
-  const corrections = listCorrectionRequests(session.id).map((r) =>
+  const corrections = (await listCorrectionRequests(session.id)).map((r) =>
     correctionToRow(r, userNameById),
   );
-  const leaves = listLeaveRequests(session.id).map((r) =>
+  const leaves = (await listLeaveRequests(session.id)).map((r) =>
     leaveToRow(r, userNameById),
   );
 
@@ -153,7 +153,7 @@ export default async function ApplicationsPage() {
     (a, b) => b.submittedAt.getTime() - a.submittedAt.getTime(),
   );
 
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

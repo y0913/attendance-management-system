@@ -10,6 +10,8 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
 import { buildSeedRecords } from '../src/lib/mock/seed-time-clocks';
 import { buildSeedNotes } from '../src/lib/mock/seed-daily-notes';
+import { buildSeedCorrections } from '../src/lib/mock/seed-clock-corrections';
+import { buildSeedLeaves } from '../src/lib/mock/seed-leave-requests';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('DATABASE_URL is not set');
@@ -140,6 +142,50 @@ async function main() {
     });
   }
   console.log(`✓ daily_notes: ${noteRecords.length}`);
+
+  // clock-correction-requests: u_general 3件
+  const ccrRecords = buildSeedCorrections();
+  await prisma.clockCorrectionRequest.deleteMany({
+    where: { requesterId: general.id },
+  });
+  for (const r of ccrRecords) {
+    await prisma.clockCorrectionRequest.create({
+      data: {
+        requesterId: r.requesterId,
+        currentApproverId: r.approverId,
+        status: r.status,
+        submittedAt: r.submittedAt,
+        decidedAt: r.decidedAt,
+        reason: r.reason,
+        targetDate: new Date(`${r.targetDate}T00:00:00+09:00`),
+        beforePayload: r.before as object,
+        afterPayload: r.after as object,
+      },
+    });
+  }
+  console.log(`✓ clock_correction_requests: ${ccrRecords.length}`);
+
+  // leave-requests: u_general 4件（半日含む）
+  const lrRecords = buildSeedLeaves();
+  await prisma.leaveRequest.deleteMany({ where: { requesterId: general.id } });
+  for (const r of lrRecords) {
+    await prisma.leaveRequest.create({
+      data: {
+        requesterId: r.requesterId,
+        currentApproverId: r.approverId,
+        status: r.status,
+        submittedAt: r.submittedAt,
+        decidedAt: r.decidedAt,
+        reason: r.reason,
+        leaveType: 'annual',
+        dayUnit: r.dayUnit,
+        startDate: new Date(`${r.startDate}T00:00:00+09:00`),
+        endDate: new Date(`${r.endDate}T00:00:00+09:00`),
+        days: r.days,
+      },
+    });
+  }
+  console.log(`✓ leave_requests: ${lrRecords.length}`);
 
   console.log('Seed complete.');
 }

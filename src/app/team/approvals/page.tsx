@@ -136,11 +136,11 @@ export default async function TeamApprovalsPage() {
     redirect('/clock');
   }
 
-  const items = listPendingForApprover(session.id);
+  const items = await listPendingForApprover(session.id);
   const allUsers = await listAllUsers();
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
   const rows = items.map((item) => itemToRow(item, userNameById));
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

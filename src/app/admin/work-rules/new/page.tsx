@@ -25,7 +25,7 @@ export default async function NewWorkRulePage() {
   if (!session) redirect('/login');
   if (session.role !== 'admin') redirect('/clock');
 
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
   const tomorrow = formatInTimeZone(
     addDays(new Date(), 1),
     JST_TIMEZONE,

@@ -92,7 +92,7 @@ export default async function ClosingsPage({
 
   const closedCount = rows.filter((r) => r.closing !== null).length;
   const notClosedCount = rows.length - closedCount;
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
 
   const prevYm = shiftYearMonth(ym, -1);
   const nextYm = shiftYearMonth(ym, 1);

@@ -78,9 +78,9 @@ export default async function AttendanceDetailPage({
   const dayDate = new Date(`${jstDate}T00:00:00+09:00`);
   const clocks = await listClocksForDate(session.id, dayDate);
   const note = await getDailyNote(session.id, jstDate);
-  const activeCorrection = findActiveCorrection(session.id, jstDate);
+  const activeCorrection = await findActiveCorrection(session.id, jstDate);
   const currentSnapshot = await captureCurrentSnapshot(session.id, jstDate);
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

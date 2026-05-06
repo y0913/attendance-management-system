@@ -61,7 +61,7 @@ export default async function AuditLogsPage({
     actorId: actorFilter ?? undefined,
     limit: 200,
   });
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
   const allUsers = await listAllUsers();
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 

@@ -67,7 +67,7 @@ export default async function AttendancePage({
   const missingClockOutDays = summaries.filter(
     (s) => s.clockIn && !s.clockOut,
   ).length;
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   const prevYm = shiftYearMonth(ym, -1);
   const nextYm = shiftYearMonth(ym, 1);

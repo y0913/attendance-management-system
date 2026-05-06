@@ -59,7 +59,7 @@ export async function decideRequestAction(input: {
           decision: parsed.data.decision,
           isAdmin,
         })
-      : decideLeave({
+      : await decideLeave({
           id: parsed.data.id,
           deciderId: session.id,
           decision: parsed.data.decision,

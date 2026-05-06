@@ -43,7 +43,7 @@ export default async function WorkRulesTimelinePage() {
   const sorted = versions
     .slice()
     .sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime());
-  const myPending = countPendingForApprover(session.id);
+  const myPending = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

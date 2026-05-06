@@ -43,7 +43,7 @@ export default async function ClockPage() {
   const state = await getClockState(session.id);
   const clocks = await listClocksForDate(session.id);
   const latestIn = await getLatestClockIn(session.id);
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   return (
     <div className="min-h-screen bg-muted">

@@ -82,7 +82,7 @@ export default async function TeamAttendanceUserPage({
   const closedBy = summary.closedById
     ? await findMockUserById(summary.closedById)
     : null;
-  const pendingCount = countPendingForApprover(session.id);
+  const pendingCount = await countPendingForApprover(session.id);
 
   const prevYm = shiftYearMonth(ym, -1);
   const nextYm = shiftYearMonth(ym, 1);
