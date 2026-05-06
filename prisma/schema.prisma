@@ -125,6 +125,7 @@ model User {
   sessions Session[]
 
   timeClocks              TimeClock[]
+  dailyNotes              DailyNote[]
   dailyAttendances        DailyAttendance[]
   clockCorrectionRequests ClockCorrectionRequest[] @relation("ClockCorrectionRequester")
   pendingClockCorrections ClockCorrectionRequest[] @relation("ClockCorrectionApprover")
@@ -179,6 +180,20 @@ model TimeClock {
 
   @@index([userId, occurredAt])
   @@map("time_clocks")
+}
+
+model DailyNote {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  jstDate   String   @map("jst_date") // yyyy-MM-dd
+  content   String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, jstDate])
+  @@index([userId, jstDate])
+  @@map("daily_notes")
 }
 
 model DailyAttendance {

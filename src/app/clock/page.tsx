@@ -40,9 +40,9 @@ export default async function ClockPage() {
   const session = await getMockSession();
   if (!session) redirect('/login');
 
-  const state = getClockState(session.id);
-  const clocks = listClocksForDate(session.id);
-  const latestIn = getLatestClockIn(session.id);
+  const state = await getClockState(session.id);
+  const clocks = await listClocksForDate(session.id);
+  const latestIn = await getLatestClockIn(session.id);
   const pendingCount = countPendingForApprover(session.id);
 
   return (

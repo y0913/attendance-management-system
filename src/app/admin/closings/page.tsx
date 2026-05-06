@@ -13,6 +13,7 @@ import { AppHeader } from '@/components/app-header';
 import {
   buildClosingSnapshot,
   findClosing,
+  type ClosingSnapshot,
   type MockAttendanceClosing,
 } from '@/lib/mock/attendance-closings';
 import {
@@ -60,7 +61,7 @@ interface UserRow {
   userName: string;
   role: string;
   closing: MockAttendanceClosing | null;
-  preview: ReturnType<typeof buildClosingSnapshot>;
+  preview: ClosingSnapshot;
 }
 
 export default async function ClosingsPage({
@@ -79,13 +80,15 @@ export default async function ClosingsPage({
     a.name.localeCompare(b.name, 'ja'),
   );
   const userNameById = new Map(users.map((u) => [u.id, u.name]));
-  const rows: UserRow[] = users.map((u) => ({
-    userId: u.id,
-    userName: u.name,
-    role: ROLE_LABEL[u.role],
-    closing: findClosing(u.id, ym),
-    preview: buildClosingSnapshot(u.id, ym),
-  }));
+  const rows: UserRow[] = await Promise.all(
+    users.map(async (u) => ({
+      userId: u.id,
+      userName: u.name,
+      role: ROLE_LABEL[u.role],
+      closing: findClosing(u.id, ym),
+      preview: await buildClosingSnapshot(u.id, ym),
+    })),
+  );
 
   const closedCount = rows.filter((r) => r.closing !== null).length;
   const notClosedCount = rows.length - closedCount;

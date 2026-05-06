@@ -15,12 +15,14 @@ export async function listOvertimeAlerts(
   yearMonth: string,
 ): Promise<OvertimeAlertItem[]> {
   const users = await listActiveUsers();
-  return users
-    .map((user) => {
-      const summary = getEffectiveMonthlySummary(user.id, yearMonth);
+  const items = await Promise.all(
+    users.map(async (user) => {
+      const summary = await getEffectiveMonthlySummary(user.id, yearMonth);
       const estimate = estimateMonthlyOvertime(yearMonth, summary.daily);
       return { user, estimate, isClosed: summary.isClosed };
-    })
+    }),
+  );
+  return items
     .filter((item) => item.estimate.exceedsThreshold)
     .sort(
       (a, b) =>

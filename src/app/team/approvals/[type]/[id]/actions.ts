@@ -53,7 +53,7 @@ export async function decideRequestAction(input: {
   const isAdmin = session.role === 'admin';
   const result =
     parsed.data.type === 'correction'
-      ? decideCorrection({
+      ? await decideCorrection({
           id: parsed.data.id,
           deciderId: session.id,
           decision: parsed.data.decision,

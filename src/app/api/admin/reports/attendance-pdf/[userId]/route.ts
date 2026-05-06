@@ -30,7 +30,7 @@ export async function GET(
   const ym = ymParam && isValidYm(ymParam) ? ymParam : currentYearMonthJst();
 
   const company = await getCompany();
-  const summary = getEffectiveMonthlySummary(target.id, ym);
+  const summary = await getEffectiveMonthlySummary(target.id, ym);
 
   const buffer = await renderToBuffer(
     AttendanceMonthlyPdf({

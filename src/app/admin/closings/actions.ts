@@ -52,7 +52,7 @@ export async function closeMonthAction(input: {
     };
   }
 
-  const closing = closeMonth(
+  const closing = await closeMonth(
     parsed.data.userId,
     parsed.data.yearMonth,
     session.id,
@@ -108,7 +108,7 @@ export async function bulkCloseMonthAction(input: {
       skippedCount += 1;
       continue;
     }
-    const closing = closeMonth(u.id, ym, session.id);
+    const closing = await closeMonth(u.id, ym, session.id);
     if (closing) {
       closedCount += 1;
       recordAuditLog({

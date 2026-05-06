@@ -38,7 +38,7 @@ export async function punchClockAction(
     };
   }
 
-  const state = getClockState(session.id);
+  const state = await getClockState(session.id);
   if (!ALLOWED[state].includes(parsed.data.type)) {
     return {
       ok: false,
@@ -46,7 +46,7 @@ export async function punchClockAction(
     };
   }
 
-  appendClock(session.id, parsed.data.type);
+  await appendClock(session.id, parsed.data.type);
   revalidatePath('/clock');
 
   return { ok: true, data: { type: parsed.data.type } };

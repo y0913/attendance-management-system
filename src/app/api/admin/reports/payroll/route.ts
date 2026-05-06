@@ -81,7 +81,7 @@ export async function GET(request: NextRequest): Promise<Response> {
   ];
   const body: unknown[][] = await Promise.all(
     users.map(async (u): Promise<unknown[]> => {
-      const baseSummary = getEffectiveMonthlySummary(u.id, ym);
+      const baseSummary = await getEffectiveMonthlySummary(u.id, ym);
       const payroll = await computeMonthlyPayroll(u.id, ym);
       const manager = u.managerId ? userById.get(u.managerId) ?? null : null;
     const s = payroll.summary;

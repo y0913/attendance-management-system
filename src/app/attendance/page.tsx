@@ -56,8 +56,8 @@ export default async function AttendancePage({
   const ym =
     params.ym && isValidYm(params.ym) ? params.ym : currentYearMonthJst();
 
-  const summaries = summarizeMonth(session.id, ym);
-  const notesMap = getDailyNotesMap(
+  const summaries = await summarizeMonth(session.id, ym);
+  const notesMap = await getDailyNotesMap(
     session.id,
     summaries.map((s) => s.jstDateKey),
   );

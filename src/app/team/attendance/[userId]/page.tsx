@@ -74,8 +74,8 @@ export default async function TeamAttendanceUserPage({
   const sp = await searchParams;
   const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : currentYearMonthJst();
 
-  const summary = getEffectiveMonthlySummary(target.id, ym);
-  const notesMap = getDailyNotesMap(
+  const summary = await getEffectiveMonthlySummary(target.id, ym);
+  const notesMap = await getDailyNotesMap(
     target.id,
     summary.daily.map((d) => d.date),
   );

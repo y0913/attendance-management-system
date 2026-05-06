@@ -60,11 +60,11 @@ const overlapsMonth = (
   return !(endDate < ymStart || startDate > ymEnd);
 };
 
-export function buildClosingSnapshot(
+export async function buildClosingSnapshot(
   userId: string,
   yearMonth: string,
-): ClosingSnapshot {
-  const summaries = summarizeMonth(userId, yearMonth);
+): Promise<ClosingSnapshot> {
+  const summaries = await summarizeMonth(userId, yearMonth);
   const daily = summaries.map(dailyToEntry);
   const workedDays = summaries.filter((s) => s.workMinutes != null).length;
   const totalWork = totalWorkMinutes(summaries);
@@ -120,13 +120,13 @@ export function deleteClosing(id: string): MockAttendanceClosing | null {
   return removed;
 }
 
-export function closeMonth(
+export async function closeMonth(
   userId: string,
   yearMonth: string,
   closedById: string,
-): MockAttendanceClosing | null {
+): Promise<MockAttendanceClosing | null> {
   if (findClosing(userId, yearMonth)) return null;
-  const snapshot = buildClosingSnapshot(userId, yearMonth);
+  const snapshot = await buildClosingSnapshot(userId, yearMonth);
   const closing: MockAttendanceClosing = {
     id: `acl_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
     userId,
@@ -152,10 +152,10 @@ export interface EffectiveMonthlySummary {
   daily: DailyClosingEntry[];
 }
 
-export function getEffectiveMonthlySummary(
+export async function getEffectiveMonthlySummary(
   userId: string,
   yearMonth: string,
-): EffectiveMonthlySummary {
+): Promise<EffectiveMonthlySummary> {
   const closing = findClosing(userId, yearMonth);
   if (closing) {
     return {
@@ -165,7 +165,7 @@ export function getEffectiveMonthlySummary(
       ...closing.snapshot,
     };
   }
-  const snapshot = buildClosingSnapshot(userId, yearMonth);
+  const snapshot = await buildClosingSnapshot(userId, yearMonth);
   return {
     isClosed: false,
     closedAt: null,

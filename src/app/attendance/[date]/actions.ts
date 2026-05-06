@@ -36,7 +36,7 @@ export async function saveDailyNoteAction(
     };
   }
 
-  upsertDailyNote(session.id, parsed.data.jstDate, parsed.data.content);
+  await upsertDailyNote(session.id, parsed.data.jstDate, parsed.data.content);
   revalidatePath('/attendance');
   revalidatePath(`/attendance/${parsed.data.jstDate}`);
 
@@ -88,7 +88,7 @@ export async function submitCorrectionAction(input: {
     };
   }
 
-  const before = captureCurrentSnapshot(session.id, parsed.data.jstDate);
+  const before = await captureCurrentSnapshot(session.id, parsed.data.jstDate);
   const after = {
     clockIn: blank(parsed.data.clockIn),
     clockOut: blank(parsed.data.clockOut),

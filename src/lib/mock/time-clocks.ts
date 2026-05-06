@@ -1,7 +1,9 @@
+// Phase 3: 内部を Prisma 経由に書き換え。すべて async。
+
 import { formatInTimeZone } from 'date-fns-tz';
-import type { TimeClockType } from '@prisma/client';
+import type { TimeClock, TimeClockType } from '@prisma/client';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { buildSeedRecords } from './seed-time-clocks';
+import { prisma } from '@/lib/db';
 
 export type TimeClockSource = 'web' | 'manual_correction';
 
@@ -13,64 +15,57 @@ export interface MockTimeClock {
   source: TimeClockSource;
 }
 
-const store = new Map<string, MockTimeClock[]>();
-
-let seeded = false;
-function ensureSeeded(): void {
-  if (seeded) return;
-  seeded = true;
-  let counter = 0;
-  for (const r of buildSeedRecords()) {
-    const clock: MockTimeClock = {
-      id: `seed_${counter++}`,
-      userId: r.userId,
-      type: r.type,
-      occurredAt: r.occurredAt,
-      source: 'web',
-    };
-    const list = store.get(r.userId) ?? [];
-    list.push(clock);
-    store.set(r.userId, list);
-  }
-}
-
-export function listClocksFor(userId: string): MockTimeClock[] {
-  ensureSeeded();
-  return [...(store.get(userId) ?? [])].sort(
-    (a, b) => a.occurredAt.getTime() - b.occurredAt.getTime(),
-  );
-}
+const toMockTimeClock = (t: TimeClock): MockTimeClock => ({
+  id: t.id,
+  userId: t.userId,
+  type: t.type,
+  occurredAt: t.occurredAt,
+  source: t.source,
+});
 
 const jstDateKey = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
 
-export function listClocksForDate(
-  userId: string,
-  date: Date = new Date(),
-): MockTimeClock[] {
-  const target = jstDateKey(date);
-  return listClocksFor(userId).filter(
-    (c) => jstDateKey(c.occurredAt) === target,
-  );
+const jstDayBoundsUtc = (jstDate: string): { start: Date; end: Date } => {
+  const start = new Date(`${jstDate}T00:00:00+09:00`);
+  const end = new Date(`${jstDate}T00:00:00+09:00`);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { start, end };
+};
+
+export async function listClocksFor(userId: string): Promise<MockTimeClock[]> {
+  const list = await prisma.timeClock.findMany({
+    where: { userId },
+    orderBy: { occurredAt: 'asc' },
+  });
+  return list.map(toMockTimeClock);
 }
 
-export function appendClock(
+export async function listClocksForDate(
+  userId: string,
+  date: Date = new Date(),
+): Promise<MockTimeClock[]> {
+  const target = jstDateKey(date);
+  const { start, end } = jstDayBoundsUtc(target);
+  const list = await prisma.timeClock.findMany({
+    where: {
+      userId,
+      occurredAt: { gte: start, lt: end },
+    },
+    orderBy: { occurredAt: 'asc' },
+  });
+  return list.map(toMockTimeClock);
+}
+
+export async function appendClock(
   userId: string,
   type: TimeClockType,
   occurredAt: Date = new Date(),
   source: TimeClockSource = 'web',
-): MockTimeClock {
-  ensureSeeded();
-  const clock: MockTimeClock = {
-    id: `tc_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-    userId,
-    type,
-    occurredAt,
-    source,
-  };
-  const existing = store.get(userId) ?? [];
-  existing.push(clock);
-  store.set(userId, existing);
-  return clock;
+): Promise<MockTimeClock> {
+  const created = await prisma.timeClock.create({
+    data: { userId, type, occurredAt, source },
+  });
+  return toMockTimeClock(created);
 }
 
 export interface ClockSnapshotInput {
@@ -83,15 +78,16 @@ export interface ClockSnapshotInput {
 const toJstInstant = (jstDate: string, hhmm: string): Date =>
   new Date(`${jstDate}T${hhmm}:00+09:00`);
 
-export function replaceClocksForDate(
+export async function replaceClocksForDate(
   userId: string,
   jstDate: string,
   snapshot: ClockSnapshotInput,
   source: TimeClockSource = 'manual_correction',
-): MockTimeClock[] {
-  ensureSeeded();
-  const list = store.get(userId) ?? [];
-  const kept = list.filter((c) => jstDateKey(c.occurredAt) !== jstDate);
+): Promise<MockTimeClock[]> {
+  const { start, end } = jstDayBoundsUtc(jstDate);
+  await prisma.timeClock.deleteMany({
+    where: { userId, occurredAt: { gte: start, lt: end } },
+  });
 
   const order: { type: TimeClockType; value: string | null }[] = [
     { type: 'clock_in', value: snapshot.clockIn },
@@ -100,23 +96,30 @@ export function replaceClocksForDate(
     { type: 'clock_out', value: snapshot.clockOut },
   ];
 
-  let counter = 0;
-  const added: MockTimeClock[] = [];
+  const newClocks: Array<{
+    userId: string;
+    type: TimeClockType;
+    occurredAt: Date;
+    source: TimeClockSource;
+  }> = [];
   for (const { type, value } of order) {
     if (!value) continue;
-    const clock: MockTimeClock = {
-      id: `tc_${Date.now()}_${counter++}_${Math.random().toString(36).slice(2, 6)}`,
+    newClocks.push({
       userId,
       type,
       occurredAt: toJstInstant(jstDate, value),
       source,
-    };
-    kept.push(clock);
-    added.push(clock);
+    });
   }
+  if (newClocks.length === 0) return [];
 
-  store.set(userId, kept);
-  return added;
+  await prisma.timeClock.createMany({ data: newClocks });
+  // Prisma の createMany は返り値が件数のみ。再度 findMany で返す。
+  const list = await prisma.timeClock.findMany({
+    where: { userId, occurredAt: { gte: start, lt: end } },
+    orderBy: { occurredAt: 'asc' },
+  });
+  return list.map(toMockTimeClock);
 }
 
 export type ClockState =
@@ -125,11 +128,7 @@ export type ClockState =
   | 'on_break'
   | 'clocked_out';
 
-export function getClockState(
-  userId: string,
-  date: Date = new Date(),
-): ClockState {
-  const clocks = listClocksForDate(userId, date);
+const stateFromClocks = (clocks: MockTimeClock[]): ClockState => {
   if (clocks.length === 0) return 'not_clocked_in';
   const latest = clocks[clocks.length - 1];
   switch (latest.type) {
@@ -141,13 +140,21 @@ export function getClockState(
     case 'clock_out':
       return 'clocked_out';
   }
-}
+};
 
-export function getLatestClockIn(
+export async function getClockState(
   userId: string,
   date: Date = new Date(),
-): MockTimeClock | null {
-  const clocks = listClocksForDate(userId, date);
+): Promise<ClockState> {
+  const clocks = await listClocksForDate(userId, date);
+  return stateFromClocks(clocks);
+}
+
+export async function getLatestClockIn(
+  userId: string,
+  date: Date = new Date(),
+): Promise<MockTimeClock | null> {
+  const clocks = await listClocksForDate(userId, date);
   for (let i = clocks.length - 1; i >= 0; i--) {
     if (clocks[i].type === 'clock_in') return clocks[i];
   }
@@ -161,18 +168,38 @@ export interface ClockStateCount {
   clockedOut: number;
 }
 
-export function countClockStates(
+export async function countClockStates(
   userIds: string[],
   date: Date = new Date(),
-): ClockStateCount {
+): Promise<ClockStateCount> {
   const acc: ClockStateCount = {
     notClockedIn: 0,
     working: 0,
     onBreak: 0,
     clockedOut: 0,
   };
+  if (userIds.length === 0) return acc;
+
+  const target = jstDateKey(date);
+  const { start, end } = jstDayBoundsUtc(target);
+  const clocks = await prisma.timeClock.findMany({
+    where: {
+      userId: { in: userIds },
+      occurredAt: { gte: start, lt: end },
+    },
+    orderBy: { occurredAt: 'asc' },
+  });
+
+  const byUser = new Map<string, MockTimeClock[]>();
+  for (const c of clocks) {
+    const m = toMockTimeClock(c);
+    const arr = byUser.get(m.userId) ?? [];
+    arr.push(m);
+    byUser.set(m.userId, arr);
+  }
+
   for (const userId of userIds) {
-    const state = getClockState(userId, date);
+    const state = stateFromClocks(byUser.get(userId) ?? []);
     switch (state) {
       case 'not_clocked_in':
         acc.notClockedIn += 1;

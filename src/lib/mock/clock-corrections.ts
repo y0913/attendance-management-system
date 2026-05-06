@@ -129,12 +129,12 @@ export function listAllCorrections(): MockClockCorrectionRequest[] {
 const fmt = (d: Date): string =>
   formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
 
-export function captureCurrentSnapshot(
+export async function captureCurrentSnapshot(
   userId: string,
   targetDate: string,
-): ClockSnapshot {
+): Promise<ClockSnapshot> {
   const dayDate = new Date(`${targetDate}T00:00:00+09:00`);
-  const clocks = listClocksForDate(userId, dayDate);
+  const clocks = await listClocksForDate(userId, dayDate);
   const find = (t: string) =>
     clocks.find((c) => c.type === t)?.occurredAt ?? null;
   return {
@@ -204,12 +204,12 @@ export type DecideCorrectionResult =
   | { ok: true; request: MockClockCorrectionRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export function decideCorrection(input: {
+export async function decideCorrection(input: {
   id: string;
   deciderId: string;
   decision: CorrectionDecision;
   isAdmin: boolean;
-}): DecideCorrectionResult {
+}): Promise<DecideCorrectionResult> {
   ensureSeeded();
   const req = store.find((r) => r.id === input.id);
   if (!req) return { ok: false, reason: 'NOT_FOUND' };
@@ -231,7 +231,11 @@ export function decideCorrection(input: {
   req.decidedAt = new Date();
 
   if (nextStatus === 'approved') {
-    replaceClocksForDate(req.requesterId, req.targetDate, req.afterPayload);
+    await replaceClocksForDate(
+      req.requesterId,
+      req.targetDate,
+      req.afterPayload,
+    );
   }
 
   return { ok: true, request: req };

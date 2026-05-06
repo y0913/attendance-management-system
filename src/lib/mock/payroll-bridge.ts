@@ -95,12 +95,14 @@ export async function computeMonthlyPayroll(
 
   const company = await getCompany();
 
-  const dailyAttendances: DailyAttendance[] = days.map((dayDate) => {
-    const clocks = listClocksForDate(userId, dayDate);
-    const dow = toZonedTime(dayDate, JST_TIMEZONE).getDay();
-    const isLegalHoliday = dow === company.legalHolidayWeekday;
-    return calcDailyAttendance(clocks, dayDate, rule, isLegalHoliday);
-  });
+  const dailyAttendances: DailyAttendance[] = await Promise.all(
+    days.map(async (dayDate) => {
+      const clocks = await listClocksForDate(userId, dayDate);
+      const dow = toZonedTime(dayDate, JST_TIMEZONE).getDay();
+      const isLegalHoliday = dow === company.legalHolidayWeekday;
+      return calcDailyAttendance(clocks, dayDate, rule, isLegalHoliday);
+    }),
+  );
 
   const summary = calcMonthlySummary(
     dailyAttendances,

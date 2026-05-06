@@ -44,7 +44,7 @@ export async function GET(
   const ymParam = searchParams.get('ym');
   const ym = ymParam && isValidYm(ymParam) ? ymParam : currentYearMonthJst();
 
-  const summary = getEffectiveMonthlySummary(target.id, ym);
+  const summary = await getEffectiveMonthlySummary(target.id, ym);
 
   const header: unknown[] = [
     '日付',

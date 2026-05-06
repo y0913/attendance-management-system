@@ -19,11 +19,11 @@ export interface DailySummary {
 const minutesBetween = (a: Date, b: Date): number =>
   Math.round((b.getTime() - a.getTime()) / MS_PER_MINUTE);
 
-export function summarizeDay(
+export async function summarizeDay(
   userId: string,
   date: Date,
-): DailySummary {
-  const clocks = listClocksForDate(userId, date);
+): Promise<DailySummary> {
+  const clocks = await listClocksForDate(userId, date);
   const clockIn = clocks.find((c) => c.type === 'clock_in') ?? null;
   const clockOut = clocks.find((c) => c.type === 'clock_out') ?? null;
 
@@ -75,11 +75,12 @@ export function listMonthDays(yearMonth: string): Date[] {
   return days;
 }
 
-export function summarizeMonth(
+export async function summarizeMonth(
   userId: string,
   yearMonth: string,
-): DailySummary[] {
-  return listMonthDays(yearMonth).map((d) => summarizeDay(userId, d));
+): Promise<DailySummary[]> {
+  const days = listMonthDays(yearMonth);
+  return Promise.all(days.map((d) => summarizeDay(userId, d)));
 }
 
 export function totalWorkMinutes(summaries: DailySummary[]): number {

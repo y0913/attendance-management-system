@@ -83,8 +83,8 @@ export default async function TeamAttendanceDayPage({
   const nextHref = `/team/attendance/${userId}/${nextDate}?ym=${nextDate.slice(0, 7)}`;
 
   const dayDate = new Date(`${jstDate}T00:00:00+09:00`);
-  const clocks = listClocksForDate(target.id, dayDate);
-  const note = getDailyNote(target.id, jstDate);
+  const clocks = await listClocksForDate(target.id, dayDate);
+  const note = await getDailyNote(target.id, jstDate);
   const corrections = listCorrectionRequestsForUserDate(target.id, jstDate);
   const myPending = countPendingForApprover(session.id);
 

@@ -1,4 +1,7 @@
-import { buildSeedNotes } from './seed-daily-notes';
+// Phase 3: 内部を Prisma 経由に書き換え。すべて async。
+
+import type { DailyNote } from '@prisma/client';
+import { prisma } from '@/lib/db';
 
 export interface MockDailyNote {
   userId: string;
@@ -9,56 +12,47 @@ export interface MockDailyNote {
 
 export const DAILY_NOTE_MAX_LENGTH = 2000;
 
-const store = new Map<string, MockDailyNote>();
-const key = (userId: string, jstDate: string) => `${userId}__${jstDate}`;
+const toMockDailyNote = (n: DailyNote): MockDailyNote => ({
+  userId: n.userId,
+  jstDate: n.jstDate,
+  content: n.content,
+  updatedAt: n.updatedAt,
+});
 
-let seeded = false;
-function ensureSeeded(): void {
-  if (seeded) return;
-  seeded = true;
-  for (const r of buildSeedNotes()) {
-    store.set(key(r.userId, r.jstDate), {
-      userId: r.userId,
-      jstDate: r.jstDate,
-      content: r.content,
-      updatedAt: new Date(),
-    });
-  }
-}
-
-export function getDailyNote(
+export async function getDailyNote(
   userId: string,
   jstDate: string,
-): MockDailyNote | null {
-  ensureSeeded();
-  return store.get(key(userId, jstDate)) ?? null;
+): Promise<MockDailyNote | null> {
+  const n = await prisma.dailyNote.findUnique({
+    where: { userId_jstDate: { userId, jstDate } },
+  });
+  return n ? toMockDailyNote(n) : null;
 }
 
-export function getDailyNotesMap(
+export async function getDailyNotesMap(
   userId: string,
   jstDates: string[],
-): Map<string, string> {
-  ensureSeeded();
+): Promise<Map<string, string>> {
+  if (jstDates.length === 0) return new Map();
+  const notes = await prisma.dailyNote.findMany({
+    where: { userId, jstDate: { in: jstDates } },
+  });
   const map = new Map<string, string>();
-  for (const date of jstDates) {
-    const note = store.get(key(userId, date));
-    if (note) map.set(date, note.content);
+  for (const n of notes) {
+    map.set(n.jstDate, n.content);
   }
   return map;
 }
 
-export function upsertDailyNote(
+export async function upsertDailyNote(
   userId: string,
   jstDate: string,
   content: string,
-): MockDailyNote {
-  ensureSeeded();
-  const note: MockDailyNote = {
-    userId,
-    jstDate,
-    content,
-    updatedAt: new Date(),
-  };
-  store.set(key(userId, jstDate), note);
-  return note;
+): Promise<MockDailyNote> {
+  const note = await prisma.dailyNote.upsert({
+    where: { userId_jstDate: { userId, jstDate } },
+    create: { userId, jstDate, content },
+    update: { content },
+  });
+  return toMockDailyNote(note);
 }

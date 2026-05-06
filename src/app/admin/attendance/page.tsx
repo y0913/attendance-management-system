@@ -58,8 +58,11 @@ interface RowData {
   isClosed: boolean;
 }
 
-const summarizeUser = (user: MockUser, ym: string): RowData => {
-  const summary = getEffectiveMonthlySummary(user.id, ym);
+const summarizeUser = async (
+  user: MockUser,
+  ym: string,
+): Promise<RowData> => {
+  const summary = await getEffectiveMonthlySummary(user.id, ym);
   return {
     user,
     workedDays: summary.workedDays,
@@ -95,7 +98,7 @@ export default async function AdminAttendancePage({
     })
     .sort((a, b) => a.name.localeCompare(b.name, 'ja'));
 
-  const rows = filtered.map((u) => summarizeUser(u, ym));
+  const rows = await Promise.all(filtered.map((u) => summarizeUser(u, ym)));
 
   const totalWorkAll = rows.reduce((sum, r) => sum + r.totalWorkMin, 0);
   const missingTotal = rows.reduce(

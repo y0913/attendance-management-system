@@ -1,12 +1,15 @@
-// Phase 1 seed: 会社 1 件 / ユーザー 3 名 / 労働ルール 1 件 のみ。
-// Phase 2 以降で時刻打刻・申請データなども順次追加する。
+// Phase 3 seed: 会社 / ユーザー / 労働ルール / time-clocks / daily-notes
 //
 // 既存の `src/lib/mock/seed-*.ts` と同じ値を使い、Prisma 経由で投入する。
-// 冪等にするため upsert を使用（再実行で重複作成しない）。
+// 冪等のため:
+//   - 会社・ユーザー・労働ルールは upsert
+//   - time-clocks / daily-notes は対象ユーザー分を deleteMany → 再投入
 
 import 'dotenv/config';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '@prisma/client';
+import { buildSeedRecords } from '../src/lib/mock/seed-time-clocks';
+import { buildSeedNotes } from '../src/lib/mock/seed-daily-notes';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('DATABASE_URL is not set');
@@ -108,6 +111,35 @@ async function main() {
     update: {},
   });
   console.log(`✓ work_rule_version: ${rule.validFrom.toISOString()}`);
+
+  // time-clocks: u_general のみ 60 日分（buildSeedRecords が生成）
+  const tcRecords = buildSeedRecords();
+  await prisma.timeClock.deleteMany({ where: { userId: general.id } });
+  if (tcRecords.length > 0) {
+    await prisma.timeClock.createMany({
+      data: tcRecords.map((r) => ({
+        userId: r.userId,
+        type: r.type,
+        occurredAt: r.occurredAt,
+        source: 'web' as const,
+      })),
+    });
+  }
+  console.log(`✓ time_clocks: ${tcRecords.length}`);
+
+  // daily-notes: u_general のみ
+  const noteRecords = buildSeedNotes();
+  await prisma.dailyNote.deleteMany({ where: { userId: general.id } });
+  if (noteRecords.length > 0) {
+    await prisma.dailyNote.createMany({
+      data: noteRecords.map((r) => ({
+        userId: r.userId,
+        jstDate: r.jstDate,
+        content: r.content,
+      })),
+    });
+  }
+  console.log(`✓ daily_notes: ${noteRecords.length}`);
 
   console.log('Seed complete.');
 }
