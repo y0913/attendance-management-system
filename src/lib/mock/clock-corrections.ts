@@ -87,6 +87,17 @@ export function findCorrectionById(
   return store.find((r) => r.id === id) ?? null;
 }
 
+export function listCorrectionRequestsForUserDate(
+  userId: string,
+  targetDate: string,
+): MockClockCorrectionRequest[] {
+  ensureSeeded();
+  return store
+    .filter((r) => r.requesterId === userId && r.targetDate === targetDate)
+    .slice()
+    .sort((a, b) => b.submittedAt.getTime() - a.submittedAt.getTime());
+}
+
 export function listPendingCorrectionsForApprover(
   approverId: string,
 ): MockClockCorrectionRequest[] {

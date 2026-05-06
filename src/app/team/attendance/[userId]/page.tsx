@@ -169,7 +169,12 @@ export default async function TeamAttendanceUserPage({
                         }`}
                       >
                         <td className="px-3 py-2 font-mono">
-                          {s.jstDateKey}
+                          <Link
+                            href={`/team/attendance/${target.id}/${s.jstDateKey}?ym=${ym}`}
+                            className="text-primary underline-offset-4 hover:underline"
+                          >
+                            {s.jstDateKey}
+                          </Link>
                         </td>
                         <td className={`px-3 py-2 ${dayClass(s)}`}>
                           {WEEKDAY_LABEL[s.weekday]}
