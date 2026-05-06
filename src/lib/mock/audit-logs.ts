@@ -1,14 +1,16 @@
 export type AuditEntityType =
   | 'work_rule_version'
   | 'company'
-  | 'user';
+  | 'user'
+  | 'attendance_closing';
 
 export type AuditAction =
   | 'create'
   | 'update'
   | 'delete'
   | 'deactivate'
-  | 'reactivate';
+  | 'reactivate'
+  | 'close';
 
 export interface MockAuditLog {
   id: string;
@@ -74,6 +76,7 @@ export const AUDIT_ENTITY_LABEL: Record<AuditEntityType, string> = {
   work_rule_version: '労働ルール',
   company: '会社設定',
   user: '従業員',
+  attendance_closing: '月次締め',
 };
 
 export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
@@ -82,6 +85,7 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   delete: '削除',
   deactivate: '無効化',
   reactivate: '再有効化',
+  close: '締め',
 };
 
 export const AUDIT_ACTION_BADGE: Record<AuditAction, string> = {
@@ -90,4 +94,5 @@ export const AUDIT_ACTION_BADGE: Record<AuditAction, string> = {
   delete: 'bg-rose-100 text-rose-900',
   deactivate: 'bg-zinc-200 text-zinc-700',
   reactivate: 'bg-amber-100 text-amber-900',
+  close: 'bg-indigo-100 text-indigo-900',
 };
