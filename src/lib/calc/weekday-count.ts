@@ -1,7 +1,12 @@
-import { toZonedTime } from 'date-fns-tz';
+import { formatInTimeZone } from 'date-fns-tz';
 import { JST_TIMEZONE } from './constants';
+import { isBusinessDay } from './holidays';
 
-export function countWeekdaysBetween(
+/**
+ * 期間 [startDate, endDate]（両端含む）の中で、土日と祝日を除いた営業日数を返す。
+ * 旧名称 countWeekdaysBetween との互換のため、有給消化日数の計算で使用される。
+ */
+export function countBusinessDaysBetween(
   startDate: string,
   endDate: string,
 ): number {
@@ -12,9 +17,15 @@ export function countWeekdaysBetween(
   let count = 0;
   const cursor = new Date(start);
   while (cursor.getTime() <= end.getTime()) {
-    const dow = toZonedTime(cursor, JST_TIMEZONE).getDay();
-    if (dow !== 0 && dow !== 6) count++;
+    const jstDate = formatInTimeZone(cursor, JST_TIMEZONE, 'yyyy-MM-dd');
+    if (isBusinessDay(jstDate)) count++;
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
   return count;
 }
+
+/**
+ * @deprecated 旧名称。countBusinessDaysBetween を使用してください。
+ * 祝日も除外する仕様に変更されました。
+ */
+export const countWeekdaysBetween = countBusinessDaysBetween;
