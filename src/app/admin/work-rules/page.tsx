@@ -63,7 +63,7 @@ export default async function WorkRulesTimelinePage() {
               </p>
             </div>
             <Button asChild size="sm">
-              <Link href="/admin/work-rules/new">+ 新規予約</Link>
+              <Link href="/admin/work-rules/new">+ 新規ルール</Link>
             </Button>
           </CardHeader>
           <CardContent>

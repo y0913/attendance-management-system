@@ -72,7 +72,7 @@ export default async function NewWorkRulePage() {
 
       <main className="mx-auto flex max-w-3xl flex-col gap-6 px-6 py-10">
         <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold">労働ルール 新規予約</h1>
+          <h1 className="text-xl font-semibold">労働ルール 新規ルール</h1>
           <Link
             href="/admin/work-rules"
             className="text-sm text-muted-foreground hover:underline"

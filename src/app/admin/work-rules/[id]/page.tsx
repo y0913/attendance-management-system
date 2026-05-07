@@ -96,7 +96,7 @@ export default async function EditWorkRulePage({
             </CardTitle>
             {!isFuture && (
               <p className="text-xs text-muted-foreground">
-                現行・過去バージョンは編集できません。変更したい場合は新規予約を作成してください。
+                現行・過去バージョンは編集できません。変更したい場合は新規ルールを作成してください。
               </p>
             )}
           </CardHeader>
