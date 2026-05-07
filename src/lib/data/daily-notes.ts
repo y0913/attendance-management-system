@@ -1,7 +1,7 @@
 // Phase 3: 内部を Prisma 経由に書き換え。すべて async。
 
 import type { DailyNote } from '@prisma/client';
-import { prisma } from '@/lib/db';
+import { prisma, type DbClient } from '@/lib/db';
 
 export interface MockDailyNote {
   userId: string;
@@ -48,8 +48,9 @@ export async function upsertDailyNote(
   userId: string,
   jstDate: string,
   content: string,
+  db: DbClient = prisma,
 ): Promise<MockDailyNote> {
-  const note = await prisma.dailyNote.upsert({
+  const note = await db.dailyNote.upsert({
     where: { userId_jstDate: { userId, jstDate } },
     create: { userId, jstDate, content },
     update: { content },

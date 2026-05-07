@@ -4,7 +4,7 @@
 // classifyVersionStatus は pure 関数のままで OK（既に取得済みの versions を渡す）。
 
 import type { WorkRuleVersion } from '@prisma/client';
-import { prisma } from '@/lib/db';
+import { prisma, type DbClient } from '@/lib/db';
 
 export interface MockWorkRuleVersion {
   id: string;
@@ -178,8 +178,9 @@ export function checkComplianceViolations(
 export async function createWorkRuleVersion(
   input: RuleInput,
   createdById: string,
+  db: DbClient = prisma,
 ): Promise<MockWorkRuleVersion> {
-  const created = await prisma.workRuleVersion.create({
+  const created = await db.workRuleVersion.create({
     data: {
       companyId: DEFAULT_COMPANY_ID,
       validFrom: input.validFrom,
@@ -202,9 +203,10 @@ export async function createWorkRuleVersion(
 export async function updateWorkRuleVersion(
   id: string,
   input: RuleInput,
+  db: DbClient = prisma,
 ): Promise<MockWorkRuleVersion | null> {
   try {
-    const updated = await prisma.workRuleVersion.update({
+    const updated = await db.workRuleVersion.update({
       where: { id },
       data: {
         validFrom: input.validFrom,
@@ -226,9 +228,12 @@ export async function updateWorkRuleVersion(
   }
 }
 
-export async function deleteWorkRuleVersion(id: string): Promise<boolean> {
+export async function deleteWorkRuleVersion(
+  id: string,
+  db: DbClient = prisma,
+): Promise<boolean> {
   try {
-    await prisma.workRuleVersion.delete({ where: { id } });
+    await db.workRuleVersion.delete({ where: { id } });
     return true;
   } catch {
     return false;
@@ -238,8 +243,9 @@ export async function deleteWorkRuleVersion(id: string): Promise<boolean> {
 export async function isValidFromTaken(
   validFrom: Date,
   exceptId?: string,
+  db: DbClient = prisma,
 ): Promise<boolean> {
-  const v = await prisma.workRuleVersion.findFirst({
+  const v = await db.workRuleVersion.findFirst({
     where: {
       companyId: DEFAULT_COMPANY_ID,
       validFrom,

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { prisma } from '@/lib/db';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import { getCompany, updateCompany } from '@/lib/data/companies';
 import { getMockSession } from '@/lib/data/session';
@@ -48,21 +49,28 @@ export async function updateCompanySettingsAction(input: {
   }
 
   const before = await getCompany();
-  const after = await updateCompany({
-    name: parsed.data.name.trim(),
-    closingDay: parsed.data.closingDay,
-    midMonthRateChangeStrategy: parsed.data.midMonthRateChangeStrategy,
-    monthlyStandardHours: parsed.data.monthlyStandardHours,
-    legalHolidayWeekday: parsed.data.legalHolidayWeekday,
-  });
-
-  await recordAuditLog({
-    entityType: 'company',
-    entityId: after.id,
-    action: 'update',
-    actorId: session.id,
-    before,
-    after,
+  await prisma.$transaction(async (tx) => {
+    const after = await updateCompany(
+      {
+        name: parsed.data.name.trim(),
+        closingDay: parsed.data.closingDay,
+        midMonthRateChangeStrategy: parsed.data.midMonthRateChangeStrategy,
+        monthlyStandardHours: parsed.data.monthlyStandardHours,
+        legalHolidayWeekday: parsed.data.legalHolidayWeekday,
+      },
+      tx,
+    );
+    await recordAuditLog(
+      {
+        entityType: 'company',
+        entityId: after.id,
+        action: 'update',
+        actorId: session.id,
+        before,
+        after,
+      },
+      tx,
+    );
   });
 
   revalidatePath('/admin/company-settings');

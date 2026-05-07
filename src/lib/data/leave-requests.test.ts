@@ -14,7 +14,11 @@ const { prismaMock } = vi.hoisted(() => ({
   },
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: prismaMock }));
+vi.mock('@/lib/db', () => ({
+  prisma: prismaMock,
+  withTx: async <T,>(_db: unknown, fn: (tx: unknown) => Promise<T>) =>
+    fn(prismaMock),
+}));
 
 vi.mock('./users', () => ({
   findMockUserById: vi.fn(async (id: string) => {

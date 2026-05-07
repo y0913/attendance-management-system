@@ -4,7 +4,7 @@
 // （アプリ層で union 制約）。before / after は Json。
 
 import type { AuditLog } from '@prisma/client';
-import { prisma } from '@/lib/db';
+import { prisma, type DbClient } from '@/lib/db';
 
 export type AuditEntityType =
   | 'work_rule_version'
@@ -64,8 +64,9 @@ const toJsonInput = (
 
 export async function recordAuditLog(
   input: RecordAuditLogInput,
+  db: DbClient = prisma,
 ): Promise<MockAuditLog> {
-  const created = await prisma.auditLog.create({
+  const created = await db.auditLog.create({
     data: {
       entityType: input.entityType,
       entityId: input.entityId,

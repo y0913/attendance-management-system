@@ -11,7 +11,9 @@
       "Bash(/usr/bin/grep -E '\"prisma\"|\"@prisma/client\"|\"@prisma/migrate\"' /Users/yamashitayouhei/projects/attendance-management-system/package.json)",
       "Bash(nc -z localhost 5432)",
       "Bash(/usr/bin/grep -nE \"datasource|adapter\" /Users/yamashitayouhei/projects/attendance-management-system/node_modules/@prisma/client/runtime/client.d.ts)",
-      "Bash(/usr/bin/head -20)"
+      "Bash(/usr/bin/head -20)",
+      "Read(//private/tmp/**)",
+      "Bash(npx vitest *)"
     ]
   }
 }

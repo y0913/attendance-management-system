@@ -3,7 +3,7 @@
 // マルチテナント化は将来課題。骨組み段階では会社1社のみ前提で `co_default` 固定。
 
 import type { Company, MidMonthRateChangeStrategy } from '@prisma/client';
-import { prisma } from '@/lib/db';
+import { prisma, type DbClient } from '@/lib/db';
 
 export type Weekday = 0 | 1 | 2 | 3 | 4 | 5 | 6; // 0=日曜
 
@@ -56,6 +56,7 @@ export interface UpdateCompanyInput {
 
 export async function updateCompany(
   input: UpdateCompanyInput,
+  db: DbClient = prisma,
 ): Promise<MockCompany> {
   if (input.monthlyStandardHours !== undefined) {
     overrides.monthlyStandardHours = input.monthlyStandardHours;
@@ -63,7 +64,7 @@ export async function updateCompany(
   if (input.legalHolidayWeekday !== undefined) {
     overrides.legalHolidayWeekday = input.legalHolidayWeekday;
   }
-  const updated = await prisma.company.update({
+  const updated = await db.company.update({
     where: { id: DEFAULT_COMPANY_ID },
     data: {
       name: input.name,

@@ -8,7 +8,7 @@ import type {
   ApprovalActionType,
   ApprovalRequestType,
 } from '@prisma/client';
-import { prisma } from '@/lib/db';
+import { prisma, type DbClient } from '@/lib/db';
 
 export type { ApprovalActionType };
 
@@ -53,8 +53,9 @@ interface RecordInput {
 
 export async function recordApprovalAction(
   input: RecordInput,
+  db: DbClient = prisma,
 ): Promise<MockApprovalAction> {
-  const created = await prisma.approvalAction.create({
+  const created = await db.approvalAction.create({
     data: {
       requestType: toPrismaRequestType(input.requestType),
       requestId: input.requestId,

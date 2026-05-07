@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { prisma } from '@/lib/db';
 import {
   APPROVAL_COMMENT_MAX_LENGTH,
   recordApprovalAction,
@@ -51,20 +52,41 @@ export async function decideRequestAction(input: {
   }
 
   const isAdmin = session.role === 'admin';
-  const result =
-    parsed.data.type === 'correction'
-      ? await decideCorrection({
-          id: parsed.data.id,
-          deciderId: session.id,
-          decision: parsed.data.decision,
-          isAdmin,
-        })
-      : await decideLeave({
-          id: parsed.data.id,
-          deciderId: session.id,
-          decision: parsed.data.decision,
-          isAdmin,
-        });
+  const trimmed = parsed.data.comment.trim();
+  const result = await prisma.$transaction(async (tx) => {
+    const decided =
+      parsed.data.type === 'correction'
+        ? await decideCorrection(
+            {
+              id: parsed.data.id,
+              deciderId: session.id,
+              decision: parsed.data.decision,
+              isAdmin,
+            },
+            tx,
+          )
+        : await decideLeave(
+            {
+              id: parsed.data.id,
+              deciderId: session.id,
+              decision: parsed.data.decision,
+              isAdmin,
+            },
+            tx,
+          );
+    if (!decided.ok) return decided;
+    await recordApprovalAction(
+      {
+        requestType: parsed.data.type,
+        requestId: parsed.data.id,
+        actorId: session.id,
+        action: DECISION_TO_ACTION[parsed.data.decision],
+        comment: trimmed.length > 0 ? trimmed : null,
+      },
+      tx,
+    );
+    return decided;
+  });
 
   if (!result.ok) {
     if (result.reason === 'NOT_FOUND') {
@@ -81,15 +103,6 @@ export async function decideRequestAction(input: {
       },
     };
   }
-
-  const trimmed = parsed.data.comment.trim();
-  recordApprovalAction({
-    requestType: parsed.data.type,
-    requestId: parsed.data.id,
-    actorId: session.id,
-    action: DECISION_TO_ACTION[parsed.data.decision],
-    comment: trimmed.length > 0 ? trimmed : null,
-  });
 
   revalidatePath('/team/approvals');
   revalidatePath(`/team/approvals/${parsed.data.type}/${parsed.data.id}`);

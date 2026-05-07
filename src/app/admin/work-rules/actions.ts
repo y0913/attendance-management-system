@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { prisma } from '@/lib/db';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import { getMockSession } from '@/lib/data/session';
 import {
@@ -84,16 +85,6 @@ export async function upsertWorkRuleAction(
     };
   }
 
-  if (await isValidFromTaken(validFrom, data.id)) {
-    return {
-      ok: false,
-      error: {
-        code: 'CONFLICT',
-        message: 'その適用開始日に既に別バージョンが存在します',
-      },
-    };
-  }
-
   const ruleInput: RuleInput = {
     validFrom,
     dailyOtThresholdMin: data.dailyOtThresholdMin,
@@ -121,46 +112,72 @@ export async function upsertWorkRuleAction(
     }
   }
 
-  if (data.id) {
-    const target = await findWorkRuleVersionById(data.id);
-    if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
-    if (!isFutureVersion(target)) {
+  type Result =
+    | { ok: true; id: string }
+    | { ok: false; code: 'NOT_FOUND' | 'CONFLICT'; message?: string };
+
+  const result = await prisma.$transaction(async (tx): Promise<Result> => {
+    if (await isValidFromTaken(validFrom, data.id, tx)) {
       return {
         ok: false,
-        error: {
-          code: 'CONFLICT',
-          message: '現行・過去バージョンは編集できません',
-        },
+        code: 'CONFLICT',
+        message: 'その適用開始日に既に別バージョンが存在します',
       };
     }
-    const beforeSnap = { ...target };
-    const updated = await updateWorkRuleVersion(data.id, ruleInput);
-    await recordAuditLog({
-      entityType: 'work_rule_version',
-      entityId: data.id,
-      action: 'update',
-      actorId: session.id,
-      before: beforeSnap,
-      after: updated,
-    });
-    revalidatePath('/admin/work-rules');
-    revalidatePath(`/admin/work-rules/${data.id}`);
-    revalidatePath('/admin/audit-logs');
-    return { ok: true, data: { id: data.id } };
+    if (data.id) {
+      const target = await findWorkRuleVersionById(data.id);
+      if (!target) return { ok: false, code: 'NOT_FOUND' };
+      if (!isFutureVersion(target)) {
+        return {
+          ok: false,
+          code: 'CONFLICT',
+          message: '現行・過去バージョンは編集できません',
+        };
+      }
+      const beforeSnap = { ...target };
+      const updated = await updateWorkRuleVersion(data.id, ruleInput, tx);
+      await recordAuditLog(
+        {
+          entityType: 'work_rule_version',
+          entityId: data.id,
+          action: 'update',
+          actorId: session.id,
+          before: beforeSnap,
+          after: updated,
+        },
+        tx,
+      );
+      return { ok: true, id: data.id };
+    }
+    const created = await createWorkRuleVersion(ruleInput, session.id, tx);
+    await recordAuditLog(
+      {
+        entityType: 'work_rule_version',
+        entityId: created.id,
+        action: 'create',
+        actorId: session.id,
+        before: null,
+        after: created,
+      },
+      tx,
+    );
+    return { ok: true, id: created.id };
+  });
+
+  if (!result.ok) {
+    return {
+      ok: false,
+      error: {
+        code: result.code,
+        ...(result.message ? { message: result.message } : {}),
+      },
+    };
   }
 
-  const created = await createWorkRuleVersion(ruleInput, session.id);
-  await recordAuditLog({
-    entityType: 'work_rule_version',
-    entityId: created.id,
-    action: 'create',
-    actorId: session.id,
-    before: null,
-    after: created,
-  });
   revalidatePath('/admin/work-rules');
+  if (data.id) revalidatePath(`/admin/work-rules/${data.id}`);
   revalidatePath('/admin/audit-logs');
-  return { ok: true, data: { id: created.id } };
+  return { ok: true, data: { id: result.id } };
 }
 
 export async function deleteWorkRuleAction(input: {
@@ -185,14 +202,19 @@ export async function deleteWorkRuleAction(input: {
   }
 
   const beforeSnap = { ...target };
-  await deleteWorkRuleVersion(input.id);
-  await recordAuditLog({
-    entityType: 'work_rule_version',
-    entityId: input.id,
-    action: 'delete',
-    actorId: session.id,
-    before: beforeSnap,
-    after: null,
+  await prisma.$transaction(async (tx) => {
+    await deleteWorkRuleVersion(input.id, tx);
+    await recordAuditLog(
+      {
+        entityType: 'work_rule_version',
+        entityId: input.id,
+        action: 'delete',
+        actorId: session.id,
+        before: beforeSnap,
+        after: null,
+      },
+      tx,
+    );
   });
   revalidatePath('/admin/work-rules');
   revalidatePath('/admin/audit-logs');

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { prisma } from '@/lib/db';
 import { recordApprovalAction } from '@/lib/data/approval-actions';
 import { withdrawCorrection } from '@/lib/data/clock-corrections';
 import { withdrawLeave } from '@/lib/data/leave-requests';
@@ -28,16 +29,30 @@ export async function withdrawRequestAction(input: {
     };
   }
 
-  const result =
-    parsed.data.type === 'correction'
-      ? await withdrawCorrection({
-          id: parsed.data.id,
-          requesterId: session.id,
-        })
-      : await withdrawLeave({
-          id: parsed.data.id,
-          requesterId: session.id,
-        });
+  const result = await prisma.$transaction(async (tx) => {
+    const withdrew =
+      parsed.data.type === 'correction'
+        ? await withdrawCorrection(
+            { id: parsed.data.id, requesterId: session.id },
+            tx,
+          )
+        : await withdrawLeave(
+            { id: parsed.data.id, requesterId: session.id },
+            tx,
+          );
+    if (!withdrew.ok) return withdrew;
+    await recordApprovalAction(
+      {
+        requestType: parsed.data.type,
+        requestId: parsed.data.id,
+        actorId: session.id,
+        action: 'withdraw',
+        comment: null,
+      },
+      tx,
+    );
+    return withdrew;
+  });
 
   if (!result.ok) {
     if (result.reason === 'NOT_FOUND') {
@@ -54,14 +69,6 @@ export async function withdrawRequestAction(input: {
       },
     };
   }
-
-  recordApprovalAction({
-    requestType: parsed.data.type,
-    requestId: parsed.data.id,
-    actorId: session.id,
-    action: 'withdraw',
-    comment: null,
-  });
 
   revalidatePath('/applications');
   revalidatePath('/team/approvals');

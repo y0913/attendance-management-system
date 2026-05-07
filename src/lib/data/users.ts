@@ -2,7 +2,7 @@
 // 旧 mock 配列・ensureSeeded は廃止し、seed は prisma/seed.ts へ移動済み。
 
 import type { EmploymentType, Role, User } from '@prisma/client';
-import { prisma } from '@/lib/db';
+import { prisma, type DbClient } from '@/lib/db';
 
 export interface MockUser {
   id: string;
@@ -81,8 +81,9 @@ export interface CreateUserInput {
 
 export async function createMockUser(
   input: CreateUserInput,
+  db: DbClient = prisma,
 ): Promise<MockUser> {
-  const user = await prisma.user.create({
+  const user = await db.user.create({
     data: {
       email: input.email,
       name: input.name,
@@ -110,9 +111,10 @@ export interface UpdateUserInput {
 export async function updateMockUser(
   id: string,
   input: UpdateUserInput,
+  db: DbClient = prisma,
 ): Promise<MockUser | null> {
   try {
-    const user = await prisma.user.update({
+    const user = await db.user.update({
       where: { id },
       data: {
         email: input.email,
@@ -133,9 +135,10 @@ export async function updateMockUser(
 export async function setUserDeactivation(
   id: string,
   deactivatedAt: Date | null,
+  db: DbClient = prisma,
 ): Promise<MockUser | null> {
   try {
-    const user = await prisma.user.update({
+    const user = await db.user.update({
       where: { id },
       data: { deactivatedAt },
     });

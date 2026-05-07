@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { prisma } from '@/lib/db';
 import {
   captureCurrentSnapshot,
   findActiveCorrection,
@@ -80,14 +81,6 @@ export async function submitCorrectionAction(input: {
     };
   }
 
-  const existing = await findActiveCorrection(session.id, parsed.data.jstDate);
-  if (existing) {
-    return {
-      ok: false,
-      error: { code: 'CONFLICT', message: '同じ日付で審査中の申請があります' },
-    };
-  }
-
   const before = await captureCurrentSnapshot(session.id, parsed.data.jstDate);
   const after = {
     clockIn: blank(parsed.data.clockIn),
@@ -96,16 +89,37 @@ export async function submitCorrectionAction(input: {
     breakEnd: blank(parsed.data.breakEnd),
   };
 
-  const req = await submitCorrection({
-    requesterId: session.id,
-    targetDate: parsed.data.jstDate,
-    reason: parsed.data.reason,
-    before,
-    after,
+  // findActiveCorrection と submitCorrection を 1 tx に束ねて、
+  // 同日二重申請の TOCTOU を最小化する。
+  const result = await prisma.$transaction(async (tx) => {
+    const existing = await findActiveCorrection(
+      session.id,
+      parsed.data.jstDate,
+      tx,
+    );
+    if (existing) return { duplicate: true as const };
+    const req = await submitCorrection(
+      {
+        requesterId: session.id,
+        targetDate: parsed.data.jstDate,
+        reason: parsed.data.reason,
+        before,
+        after,
+      },
+      tx,
+    );
+    return { duplicate: false as const, req };
   });
+
+  if (result.duplicate) {
+    return {
+      ok: false,
+      error: { code: 'CONFLICT', message: '同じ日付で審査中の申請があります' },
+    };
+  }
 
   revalidatePath(`/attendance/${parsed.data.jstDate}`);
   revalidatePath('/applications');
 
-  return { ok: true, data: { id: req.id } };
+  return { ok: true, data: { id: result.req.id } };
 }

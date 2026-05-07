@@ -9,7 +9,7 @@ import type { LeaveDayUnit, LeaveRequest, RequestStatus } from '@prisma/client';
 import { formatInTimeZone } from 'date-fns-tz';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { countBusinessDaysBetween } from '@/lib/calc/weekday-count';
-import { prisma } from '@/lib/db';
+import { prisma, withTx, type DbClient } from '@/lib/db';
 import { findMockUserById } from './users';
 
 export { countBusinessDaysBetween };
@@ -119,6 +119,7 @@ export type SubmitLeaveResult =
 
 export async function submitLeave(
   input: SubmitLeaveInput,
+  db: DbClient = prisma,
 ): Promise<SubmitLeaveResult> {
   if (input.dayUnit === 'half' && input.startDate !== input.endDate) {
     return { ok: false, reason: 'HALF_DAY_REQUIRES_SINGLE_DATE' };
@@ -129,7 +130,7 @@ export async function submitLeave(
     input.dayUnit === 'half'
       ? 0.5
       : countBusinessDaysBetween(input.startDate, input.endDate);
-  const created = await prisma.leaveRequest.create({
+  const created = await db.leaveRequest.create({
     data: {
       requesterId: input.requesterId,
       currentApproverId: approverId,
@@ -150,27 +151,32 @@ export type WithdrawLeaveResult =
   | { ok: true; request: MockLeaveRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export async function withdrawLeave(input: {
-  id: string;
-  requesterId: string;
-}): Promise<WithdrawLeaveResult> {
-  const req = await prisma.leaveRequest.findUnique({ where: { id: input.id } });
-  if (!req) return { ok: false, reason: 'NOT_FOUND' };
-  if (req.requesterId !== input.requesterId) {
-    return { ok: false, reason: 'FORBIDDEN' };
-  }
-  if (req.status !== 'submitted') {
-    return { ok: false, reason: 'NOT_PENDING' };
-  }
-  const updated = await prisma.leaveRequest.update({
-    where: { id: input.id },
-    data: {
-      status: 'withdrawn',
-      decidedAt: new Date(),
-      currentApproverId: null,
-    },
+export async function withdrawLeave(
+  input: {
+    id: string;
+    requesterId: string;
+  },
+  db: DbClient = prisma,
+): Promise<WithdrawLeaveResult> {
+  return withTx(db, async (tx) => {
+    const req = await tx.leaveRequest.findUnique({ where: { id: input.id } });
+    if (!req) return { ok: false, reason: 'NOT_FOUND' };
+    if (req.requesterId !== input.requesterId) {
+      return { ok: false, reason: 'FORBIDDEN' };
+    }
+    if (req.status !== 'submitted') {
+      return { ok: false, reason: 'NOT_PENDING' };
+    }
+    const updated = await tx.leaveRequest.update({
+      where: { id: input.id },
+      data: {
+        status: 'withdrawn',
+        decidedAt: new Date(),
+        currentApproverId: null,
+      },
+    });
+    return { ok: true, request: toMockLeave(updated) };
   });
-  return { ok: true, request: toMockLeave(updated) };
 }
 
 export type LeaveDecision = 'approve' | 'reject' | 'return';
@@ -179,31 +185,36 @@ export type DecideLeaveResult =
   | { ok: true; request: MockLeaveRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export async function decideLeave(input: {
-  id: string;
-  deciderId: string;
-  decision: LeaveDecision;
-  isAdmin: boolean;
-}): Promise<DecideLeaveResult> {
-  const req = await prisma.leaveRequest.findUnique({ where: { id: input.id } });
-  if (!req) return { ok: false, reason: 'NOT_FOUND' };
-  if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
-    return { ok: false, reason: 'FORBIDDEN' };
-  }
-  if (req.status !== 'submitted') {
-    return { ok: false, reason: 'NOT_PENDING' };
-  }
-  const nextStatus: RequestStatus =
-    input.decision === 'approve'
-      ? 'approved'
-      : input.decision === 'reject'
-        ? 'rejected'
-        : 'returned';
-  const updated = await prisma.leaveRequest.update({
-    where: { id: input.id },
-    data: { status: nextStatus, decidedAt: new Date() },
+export async function decideLeave(
+  input: {
+    id: string;
+    deciderId: string;
+    decision: LeaveDecision;
+    isAdmin: boolean;
+  },
+  db: DbClient = prisma,
+): Promise<DecideLeaveResult> {
+  return withTx(db, async (tx) => {
+    const req = await tx.leaveRequest.findUnique({ where: { id: input.id } });
+    if (!req) return { ok: false, reason: 'NOT_FOUND' };
+    if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
+      return { ok: false, reason: 'FORBIDDEN' };
+    }
+    if (req.status !== 'submitted') {
+      return { ok: false, reason: 'NOT_PENDING' };
+    }
+    const nextStatus: RequestStatus =
+      input.decision === 'approve'
+        ? 'approved'
+        : input.decision === 'reject'
+          ? 'rejected'
+          : 'returned';
+    const updated = await tx.leaveRequest.update({
+      where: { id: input.id },
+      data: { status: nextStatus, decidedAt: new Date() },
+    });
+    return { ok: true, request: toMockLeave(updated) };
   });
-  return { ok: true, request: toMockLeave(updated) };
 }
 
 export const LEAVE_STATUS_LABEL: Record<LeaveRequestStatus, string> = {

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { prisma } from '@/lib/db';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import { getMockSession } from '@/lib/data/session';
 import {
@@ -103,22 +104,31 @@ export async function upsertEmployeeAction(
     const target = await findMockUserById(data.id);
     if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
     const beforeSnap = { ...target };
-    const updated = await updateMockUser(data.id, {
-      name: data.name,
-      email: data.email,
-      role: data.role,
-      managerId: data.managerId,
-      employmentType: data.employmentType,
-      hiredAt,
-      baseSalary: data.baseSalary,
-    });
-    await recordAuditLog({
-      entityType: 'user',
-      entityId: data.id,
-      action: 'update',
-      actorId: session.id,
-      before: beforeSnap,
-      after: updated,
+    await prisma.$transaction(async (tx) => {
+      const updated = await updateMockUser(
+        data.id!,
+        {
+          name: data.name,
+          email: data.email,
+          role: data.role,
+          managerId: data.managerId,
+          employmentType: data.employmentType,
+          hiredAt,
+          baseSalary: data.baseSalary,
+        },
+        tx,
+      );
+      await recordAuditLog(
+        {
+          entityType: 'user',
+          entityId: data.id!,
+          action: 'update',
+          actorId: session.id,
+          before: beforeSnap,
+          after: updated,
+        },
+        tx,
+      );
     });
     revalidatePath('/admin/employees');
     revalidatePath(`/admin/employees/${data.id}`);
@@ -126,22 +136,31 @@ export async function upsertEmployeeAction(
     return { ok: true, data: { id: data.id } };
   }
 
-  const created = await createMockUser({
-    name: data.name,
-    email: data.email,
-    role: data.role,
-    managerId: data.managerId,
-    employmentType: data.employmentType,
-    hiredAt,
-    baseSalary: data.baseSalary,
-  });
-  await recordAuditLog({
-    entityType: 'user',
-    entityId: created.id,
-    action: 'create',
-    actorId: session.id,
-    before: null,
-    after: created,
+  const created = await prisma.$transaction(async (tx) => {
+    const user = await createMockUser(
+      {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        managerId: data.managerId,
+        employmentType: data.employmentType,
+        hiredAt,
+        baseSalary: data.baseSalary,
+      },
+      tx,
+    );
+    await recordAuditLog(
+      {
+        entityType: 'user',
+        entityId: user.id,
+        action: 'create',
+        actorId: session.id,
+        before: null,
+        after: user,
+      },
+      tx,
+    );
+    return user;
   });
   revalidatePath('/admin/employees');
   revalidatePath('/admin/audit-logs');
@@ -180,17 +199,23 @@ export async function setEmployeeDeactivationAction(input: {
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
   const beforeSnap = { ...target };
-  const updated = await setUserDeactivation(
-    parsed.data.id,
-    parsed.data.deactivate ? new Date() : null,
-  );
-  await recordAuditLog({
-    entityType: 'user',
-    entityId: parsed.data.id,
-    action: parsed.data.deactivate ? 'deactivate' : 'reactivate',
-    actorId: session.id,
-    before: beforeSnap,
-    after: updated,
+  await prisma.$transaction(async (tx) => {
+    const updated = await setUserDeactivation(
+      parsed.data.id,
+      parsed.data.deactivate ? new Date() : null,
+      tx,
+    );
+    await recordAuditLog(
+      {
+        entityType: 'user',
+        entityId: parsed.data.id,
+        action: parsed.data.deactivate ? 'deactivate' : 'reactivate',
+        actorId: session.id,
+        before: beforeSnap,
+        after: updated,
+      },
+      tx,
+    );
   });
   revalidatePath('/admin/employees');
   revalidatePath(`/admin/employees/${parsed.data.id}`);

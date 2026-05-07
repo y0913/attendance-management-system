@@ -6,7 +6,7 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import type { ClockCorrectionRequest, RequestStatus } from '@prisma/client';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { prisma } from '@/lib/db';
+import { prisma, withTx, type DbClient } from '@/lib/db';
 import { listClocksForDate, replaceClocksForDate } from './time-clocks';
 import { findMockUserById } from './users';
 
@@ -73,8 +73,9 @@ export async function listCorrectionRequests(
 export async function findActiveCorrection(
   userId: string,
   targetDate: string,
+  db: DbClient = prisma,
 ): Promise<MockClockCorrectionRequest | null> {
-  const r = await prisma.clockCorrectionRequest.findFirst({
+  const r = await db.clockCorrectionRequest.findFirst({
     where: {
       requesterId: userId,
       targetDate: toJstDate(targetDate),
@@ -160,10 +161,11 @@ export interface SubmitCorrectionInput {
 
 export async function submitCorrection(
   input: SubmitCorrectionInput,
+  db: DbClient = prisma,
 ): Promise<MockClockCorrectionRequest> {
   const requester = await findMockUserById(input.requesterId);
   const approverId = requester?.managerId ?? null;
-  const created = await prisma.clockCorrectionRequest.create({
+  const created = await db.clockCorrectionRequest.create({
     data: {
       requesterId: input.requesterId,
       currentApproverId: approverId,
@@ -182,29 +184,34 @@ export type WithdrawCorrectionResult =
   | { ok: true; request: MockClockCorrectionRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export async function withdrawCorrection(input: {
-  id: string;
-  requesterId: string;
-}): Promise<WithdrawCorrectionResult> {
-  const req = await prisma.clockCorrectionRequest.findUnique({
-    where: { id: input.id },
+export async function withdrawCorrection(
+  input: {
+    id: string;
+    requesterId: string;
+  },
+  db: DbClient = prisma,
+): Promise<WithdrawCorrectionResult> {
+  return withTx(db, async (tx) => {
+    const req = await tx.clockCorrectionRequest.findUnique({
+      where: { id: input.id },
+    });
+    if (!req) return { ok: false, reason: 'NOT_FOUND' };
+    if (req.requesterId !== input.requesterId) {
+      return { ok: false, reason: 'FORBIDDEN' };
+    }
+    if (req.status !== 'submitted') {
+      return { ok: false, reason: 'NOT_PENDING' };
+    }
+    const updated = await tx.clockCorrectionRequest.update({
+      where: { id: input.id },
+      data: {
+        status: 'withdrawn',
+        decidedAt: new Date(),
+        currentApproverId: null,
+      },
+    });
+    return { ok: true, request: toMockCorrection(updated) };
   });
-  if (!req) return { ok: false, reason: 'NOT_FOUND' };
-  if (req.requesterId !== input.requesterId) {
-    return { ok: false, reason: 'FORBIDDEN' };
-  }
-  if (req.status !== 'submitted') {
-    return { ok: false, reason: 'NOT_PENDING' };
-  }
-  const updated = await prisma.clockCorrectionRequest.update({
-    where: { id: input.id },
-    data: {
-      status: 'withdrawn',
-      decidedAt: new Date(),
-      currentApproverId: null,
-    },
-  });
-  return { ok: true, request: toMockCorrection(updated) };
 }
 
 export type CorrectionDecision = 'approve' | 'reject' | 'return';
@@ -213,44 +220,51 @@ export type DecideCorrectionResult =
   | { ok: true; request: MockClockCorrectionRequest }
   | { ok: false; reason: 'NOT_FOUND' | 'NOT_PENDING' | 'FORBIDDEN' };
 
-export async function decideCorrection(input: {
-  id: string;
-  deciderId: string;
-  decision: CorrectionDecision;
-  isAdmin: boolean;
-}): Promise<DecideCorrectionResult> {
-  const req = await prisma.clockCorrectionRequest.findUnique({
-    where: { id: input.id },
+export async function decideCorrection(
+  input: {
+    id: string;
+    deciderId: string;
+    decision: CorrectionDecision;
+    isAdmin: boolean;
+  },
+  db: DbClient = prisma,
+): Promise<DecideCorrectionResult> {
+  return withTx(db, async (tx) => {
+    const req = await tx.clockCorrectionRequest.findUnique({
+      where: { id: input.id },
+    });
+    if (!req) return { ok: false, reason: 'NOT_FOUND' };
+    if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
+      return { ok: false, reason: 'FORBIDDEN' };
+    }
+    if (req.status !== 'submitted') {
+      return { ok: false, reason: 'NOT_PENDING' };
+    }
+
+    const nextStatus: RequestStatus =
+      input.decision === 'approve'
+        ? 'approved'
+        : input.decision === 'reject'
+          ? 'rejected'
+          : 'returned';
+
+    const updated = await tx.clockCorrectionRequest.update({
+      where: { id: input.id },
+      data: { status: nextStatus, decidedAt: new Date() },
+    });
+
+    if (nextStatus === 'approved') {
+      await replaceClocksForDate(
+        req.requesterId,
+        toJstDateString(req.targetDate),
+        req.afterPayload as unknown as ClockSnapshot,
+        'manual_correction',
+        tx,
+      );
+    }
+
+    return { ok: true, request: toMockCorrection(updated) };
   });
-  if (!req) return { ok: false, reason: 'NOT_FOUND' };
-  if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
-    return { ok: false, reason: 'FORBIDDEN' };
-  }
-  if (req.status !== 'submitted') {
-    return { ok: false, reason: 'NOT_PENDING' };
-  }
-
-  const nextStatus: RequestStatus =
-    input.decision === 'approve'
-      ? 'approved'
-      : input.decision === 'reject'
-        ? 'rejected'
-        : 'returned';
-
-  const updated = await prisma.clockCorrectionRequest.update({
-    where: { id: input.id },
-    data: { status: nextStatus, decidedAt: new Date() },
-  });
-
-  if (nextStatus === 'approved') {
-    await replaceClocksForDate(
-      req.requesterId,
-      toJstDateString(req.targetDate),
-      req.afterPayload as unknown as ClockSnapshot,
-    );
-  }
-
-  return { ok: true, request: toMockCorrection(updated) };
 }
 
 export const STATUS_LABEL: Record<ClockCorrectionStatus, string> = {

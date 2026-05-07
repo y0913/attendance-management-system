@@ -15,6 +15,13 @@ const { authMock, usersMock, auditLogMock } = vi.hoisted(() => ({
   auditLogMock: vi.fn(),
 }));
 
+vi.mock('@/lib/db', () => ({
+  prisma: {
+    $transaction: async <T,>(fn: (tx: unknown) => Promise<T>) => fn({}),
+  },
+  withTx: async <T,>(_db: unknown, fn: (tx: unknown) => Promise<T>) => fn({}),
+}));
+
 vi.mock('@/auth', () => ({
   auth: authMock,
 }));
@@ -159,6 +166,7 @@ describe('upsertEmployeeAction (success)', () => {
     expect(usersMock.createMockUser).toHaveBeenCalledOnce();
     expect(auditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'create', entityType: 'user' }),
+      expect.anything(),
     );
   });
 
@@ -175,6 +183,7 @@ describe('upsertEmployeeAction (success)', () => {
     expect(usersMock.updateMockUser).toHaveBeenCalledOnce();
     expect(auditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'update', entityType: 'user' }),
+      expect.anything(),
     );
   });
 });
@@ -207,6 +216,7 @@ describe('setEmployeeDeactivationAction', () => {
     expect(result.ok).toBe(true);
     expect(auditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'deactivate', entityType: 'user' }),
+      expect.anything(),
     );
   });
 
@@ -223,6 +233,7 @@ describe('setEmployeeDeactivationAction', () => {
     expect(result.ok).toBe(true);
     expect(auditLogMock).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'reactivate' }),
+      expect.anything(),
     );
   });
 });

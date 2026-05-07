@@ -2,10 +2,10 @@
 //
 // snapshot は Prisma の Json として保存。読み込み時は ClosingSnapshot に cast。
 
-import type { AttendanceClosing } from '@prisma/client';
+import { Prisma, type AttendanceClosing } from '@prisma/client';
 import { formatInTimeZone } from 'date-fns-tz';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { prisma } from '@/lib/db';
+import { prisma, withTx, type DbClient } from '@/lib/db';
 import {
   summarizeMonth,
   totalWorkMinutes,
@@ -109,8 +109,9 @@ export async function buildClosingSnapshot(
 export async function findClosing(
   userId: string,
   yearMonth: string,
+  db: DbClient = prisma,
 ): Promise<MockAttendanceClosing | null> {
-  const c = await prisma.attendanceClosing.findUnique({
+  const c = await db.attendanceClosing.findUnique({
     where: { userId_yearMonth: { userId, yearMonth } },
   });
   return c ? toMockClosing(c) : null;
@@ -134,9 +135,10 @@ export async function findClosingById(
 
 export async function deleteClosing(
   id: string,
+  db: DbClient = prisma,
 ): Promise<MockAttendanceClosing | null> {
   try {
-    const removed = await prisma.attendanceClosing.delete({ where: { id } });
+    const removed = await db.attendanceClosing.delete({ where: { id } });
     return toMockClosing(removed);
   } catch {
     return null;
@@ -147,20 +149,33 @@ export async function closeMonth(
   userId: string,
   yearMonth: string,
   closedById: string,
+  db: DbClient = prisma,
 ): Promise<MockAttendanceClosing | null> {
-  const existing = await findClosing(userId, yearMonth);
-  if (existing) return null;
+  // snapshot 構築は読み取りのみ (副作用なし)。tx 内で再度ユニーク違反を検出する。
   const snapshot = await buildClosingSnapshot(userId, yearMonth);
-  const created = await prisma.attendanceClosing.create({
-    data: {
-      companyId: DEFAULT_COMPANY_ID,
-      userId,
-      yearMonth,
-      closedById,
-      snapshot: snapshot as unknown as object,
-    },
+  return withTx(db, async (tx) => {
+    try {
+      const created = await tx.attendanceClosing.create({
+        data: {
+          companyId: DEFAULT_COMPANY_ID,
+          userId,
+          yearMonth,
+          closedById,
+          snapshot: snapshot as unknown as object,
+        },
+      });
+      return toMockClosing(created);
+    } catch (e) {
+      // 同時実行で別 tx が先に締めた場合 (P2002 = unique violation)
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        return null;
+      }
+      throw e;
+    }
   });
-  return toMockClosing(created);
 }
 
 export interface EffectiveMonthlySummary {

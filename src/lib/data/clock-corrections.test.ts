@@ -15,7 +15,11 @@ const { prismaMock, replaceClocksMock } = vi.hoisted(() => ({
   replaceClocksMock: vi.fn(),
 }));
 
-vi.mock('@/lib/db', () => ({ prisma: prismaMock }));
+vi.mock('@/lib/db', () => ({
+  prisma: prismaMock,
+  withTx: async <T,>(_db: unknown, fn: (tx: unknown) => Promise<T>) =>
+    fn(prismaMock),
+}));
 
 vi.mock('./time-clocks', () => ({
   replaceClocksForDate: replaceClocksMock,

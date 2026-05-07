@@ -3,7 +3,7 @@
 import { formatInTimeZone } from 'date-fns-tz';
 import type { TimeClock, TimeClockType } from '@prisma/client';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
-import { prisma } from '@/lib/db';
+import { prisma, withTx, type DbClient } from '@/lib/db';
 
 export type TimeClockSource = 'web' | 'manual_correction';
 
@@ -61,8 +61,9 @@ export async function appendClock(
   type: TimeClockType,
   occurredAt: Date = new Date(),
   source: TimeClockSource = 'web',
+  db: DbClient = prisma,
 ): Promise<MockTimeClock> {
-  const created = await prisma.timeClock.create({
+  const created = await db.timeClock.create({
     data: { userId, type, occurredAt, source },
   });
   return toMockTimeClock(created);
@@ -83,11 +84,9 @@ export async function replaceClocksForDate(
   jstDate: string,
   snapshot: ClockSnapshotInput,
   source: TimeClockSource = 'manual_correction',
+  db: DbClient = prisma,
 ): Promise<MockTimeClock[]> {
   const { start, end } = jstDayBoundsUtc(jstDate);
-  await prisma.timeClock.deleteMany({
-    where: { userId, occurredAt: { gte: start, lt: end } },
-  });
 
   const order: { type: TimeClockType; value: string | null }[] = [
     { type: 'clock_in', value: snapshot.clockIn },
@@ -111,15 +110,19 @@ export async function replaceClocksForDate(
       source,
     });
   }
-  if (newClocks.length === 0) return [];
 
-  await prisma.timeClock.createMany({ data: newClocks });
-  // Prisma の createMany は返り値が件数のみ。再度 findMany で返す。
-  const list = await prisma.timeClock.findMany({
-    where: { userId, occurredAt: { gte: start, lt: end } },
-    orderBy: { occurredAt: 'asc' },
+  return withTx(db, async (tx) => {
+    await tx.timeClock.deleteMany({
+      where: { userId, occurredAt: { gte: start, lt: end } },
+    });
+    if (newClocks.length === 0) return [];
+    await tx.timeClock.createMany({ data: newClocks });
+    const list = await tx.timeClock.findMany({
+      where: { userId, occurredAt: { gte: start, lt: end } },
+      orderBy: { occurredAt: 'asc' },
+    });
+    return list.map(toMockTimeClock);
   });
-  return list.map(toMockTimeClock);
 }
 
 export type ClockState =
