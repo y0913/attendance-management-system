@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { recordAuditLog } from '@/lib/data/audit-logs';
-import { getMockSession } from '@/lib/data/session';
 import {
   createMockUser,
   findMockUserById,
@@ -50,11 +50,9 @@ const toJstStartOfDay = (jstDate: string): Date =>
 export async function upsertEmployeeAction(
   input: UpsertInput,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = UpsertSchema.safeParse(input);
   if (!parsed.success) {
@@ -171,11 +169,9 @@ export async function setEmployeeDeactivationAction(input: {
   id: string;
   deactivate: boolean;
 }): Promise<ActionResult<{ id: string }>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = SetDeactivationSchema.safeParse(input);
   if (!parsed.success) {

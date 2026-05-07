@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
+import { canViewUserAttendance } from '@/lib/auth/policies';
 import {
   listCorrectionRequestsForUserDate,
   STATUS_BADGE_CLASS as CORRECTION_BADGE,
@@ -18,7 +19,7 @@ import { getDailyNote } from '@/lib/data/daily-notes';
 import { countPendingForApprover } from '@/lib/data/pending-approvals';
 import { getMockSession } from '@/lib/data/session';
 import { listClocksForDate } from '@/lib/data/time-clocks';
-import { findMockUserById, isManagerOf } from '@/lib/data/users';
+import { findMockUserById } from '@/lib/data/users';
 
 const TYPE_LABEL: Record<string, string> = {
   clock_in: '出勤',
@@ -63,7 +64,7 @@ export default async function TeamAttendanceDayPage({
   const target = await findMockUserById(userId);
   if (!target) notFound();
 
-  if (session.role !== 'admin' && !(await isManagerOf(session.id, userId))) {
+  if (!(await canViewUserAttendance(session, userId))) {
     redirect('/team/attendance');
   }
 

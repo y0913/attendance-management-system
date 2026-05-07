@@ -3,9 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { recordAuditLog } from '@/lib/data/audit-logs';
-import { getMockSession } from '@/lib/data/session';
 import {
   checkComplianceViolations,
   createWorkRuleVersion,
@@ -58,11 +58,9 @@ const ensureFuture = (validFrom: Date): boolean =>
 export async function upsertWorkRuleAction(
   input: UpsertRuleInput,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = RuleSchema.safeParse(input);
   if (!parsed.success) {
@@ -183,11 +181,9 @@ export async function upsertWorkRuleAction(
 export async function deleteWorkRuleAction(input: {
   id: string;
 }): Promise<ActionResult<void>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const target = await findWorkRuleVersionById(input.id);
   if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };

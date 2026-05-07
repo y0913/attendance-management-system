@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import {
@@ -10,7 +11,6 @@ import {
   deleteClosing,
   findClosingById,
 } from '@/lib/data/attendance-closings';
-import { getMockSession } from '@/lib/data/session';
 import { findMockUserById, listActiveUsers } from '@/lib/data/users';
 
 const YmRegex = /^\d{4}-(0[1-9]|1[0-2])$/;
@@ -28,11 +28,9 @@ export async function closeMonthAction(input: {
   userId: string;
   yearMonth: string;
 }): Promise<ActionResult<{ closingId: string }>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = SingleSchema.safeParse(input);
   if (!parsed.success) {
@@ -87,11 +85,9 @@ export async function closeMonthAction(input: {
 export async function bulkCloseMonthAction(input: {
   yearMonth: string;
 }): Promise<ActionResult<{ closedCount: number; skippedCount: number }>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = BulkSchema.safeParse(input);
   if (!parsed.success) {
@@ -147,11 +143,9 @@ const UncloseSchema = z.object({
 export async function uncloseAction(input: {
   closingId: string;
 }): Promise<ActionResult<void>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = UncloseSchema.safeParse(input);
   if (!parsed.success) {

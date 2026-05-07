@@ -3,6 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireApprover } from '@/lib/auth/guards';
+import { isAdmin } from '@/lib/auth/policies';
 import { prisma } from '@/lib/db';
 import {
   APPROVAL_COMMENT_MAX_LENGTH,
@@ -11,7 +13,6 @@ import {
 } from '@/lib/data/approval-actions';
 import { decideCorrection } from '@/lib/data/clock-corrections';
 import { decideLeave } from '@/lib/data/leave-requests';
-import { getMockSession } from '@/lib/data/session';
 
 const DecideSchema = z.object({
   type: z.enum(['correction', 'leave']),
@@ -35,13 +36,9 @@ export async function decideRequestAction(input: {
   decision: 'approve' | 'reject' | 'return';
   comment: string;
 }): Promise<ActionResult<{ id: string }>> {
-  const session = await getMockSession();
-  if (!session) {
-    return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  }
-  if (session.role !== 'approver' && session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireApprover();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = DecideSchema.safeParse(input);
   if (!parsed.success) {
@@ -51,7 +48,7 @@ export async function decideRequestAction(input: {
     };
   }
 
-  const isAdmin = session.role === 'admin';
+  const isAdminActor = isAdmin(session);
   const trimmed = parsed.data.comment.trim();
   const result = await prisma.$transaction(async (tx) => {
     const decided =
@@ -61,7 +58,7 @@ export async function decideRequestAction(input: {
               id: parsed.data.id,
               deciderId: session.id,
               decision: parsed.data.decision,
-              isAdmin,
+              isAdmin: isAdminActor,
             },
             tx,
           )
@@ -70,7 +67,7 @@ export async function decideRequestAction(input: {
               id: parsed.data.id,
               deciderId: session.id,
               decision: parsed.data.decision,
-              isAdmin,
+              isAdmin: isAdminActor,
             },
             tx,
           );

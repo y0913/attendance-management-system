@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
+import { canDecideRequest } from '@/lib/auth/policies';
 import {
   APPROVAL_ACTION_LABEL,
   APPROVAL_COMMENT_MAX_LENGTH,
@@ -140,7 +141,7 @@ export default async function ApprovalDetailPage({
   if (type === 'correction') {
     const r = await findCorrectionById(id);
     if (!r) notFound();
-    if (session.role !== 'admin' && r.currentApproverId !== session.id) {
+    if (!canDecideRequest(session, r)) {
       redirect('/team/approvals');
     }
     const requester = await findMockUserById(r.requesterId);
@@ -241,7 +242,7 @@ export default async function ApprovalDetailPage({
   // leave
   const r = await findLeaveRequestById(id);
   if (!r) notFound();
-  if (session.role !== 'admin' && r.currentApproverId !== session.id) {
+  if (!canDecideRequest(session, r)) {
     redirect('/team/approvals');
   }
   const requester = await findMockUserById(r.requesterId);

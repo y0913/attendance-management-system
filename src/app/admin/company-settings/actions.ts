@@ -3,10 +3,10 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import { getCompany, updateCompany } from '@/lib/data/companies';
-import { getMockSession } from '@/lib/data/session';
 
 const StrategyEnum = z.enum(['daily', 'month_end']);
 const WeekdayEnum = z.union([
@@ -34,11 +34,9 @@ export async function updateCompanySettingsAction(input: {
   monthlyStandardHours: number;
   legalHolidayWeekday: 0 | 1 | 2 | 3 | 4 | 5 | 6;
 }): Promise<ActionResult<void>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  if (session.role !== 'admin') {
-    return { ok: false, error: { code: 'FORBIDDEN' } };
-  }
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = UpdateSchema.safeParse(input);
   if (!parsed.success) {

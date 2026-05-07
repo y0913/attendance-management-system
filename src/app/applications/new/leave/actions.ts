@@ -3,13 +3,13 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireSession } from '@/lib/auth/guards';
 import { isBusinessDay } from '@/lib/calc/holidays';
 import {
   countBusinessDaysBetween,
   LEAVE_REASON_MAX_LENGTH,
   submitLeave,
 } from '@/lib/data/leave-requests';
-import { getMockSession } from '@/lib/data/session';
 
 const Schema = z
   .object({
@@ -33,10 +33,9 @@ export async function submitLeaveAction(input: {
   endDate: string;
   reason: string;
 }): Promise<ActionResult<{ id: string }>> {
-  const session = await getMockSession();
-  if (!session) {
-    return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = Schema.safeParse(input);
   if (!parsed.success) {

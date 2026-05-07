@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { TimeClockType } from '@prisma/client';
 import type { ActionResult } from '@/lib/action-result';
-import { getMockSession } from '@/lib/data/session';
+import { requireSession } from '@/lib/auth/guards';
 import {
   appendClock,
   getClockState,
@@ -25,10 +25,9 @@ const ALLOWED: Record<ClockState, TimeClockType[]> = {
 export async function punchClockAction(
   input: { type: TimeClockType },
 ): Promise<ActionResult<{ type: TimeClockType }>> {
-  const session = await getMockSession();
-  if (!session) {
-    return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = PunchSchema.safeParse(input);
   if (!parsed.success) {

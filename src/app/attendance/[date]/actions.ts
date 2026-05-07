@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireSession } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import {
   captureCurrentSnapshot,
@@ -14,7 +15,6 @@ import {
   DAILY_NOTE_MAX_LENGTH,
   upsertDailyNote,
 } from '@/lib/data/daily-notes';
-import { getMockSession } from '@/lib/data/session';
 
 const SaveSchema = z.object({
   jstDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
@@ -24,10 +24,9 @@ const SaveSchema = z.object({
 export async function saveDailyNoteAction(
   input: { jstDate: string; content: string },
 ): Promise<ActionResult<{ jstDate: string }>> {
-  const session = await getMockSession();
-  if (!session) {
-    return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = SaveSchema.safeParse(input);
   if (!parsed.success) {
@@ -68,10 +67,9 @@ export async function submitCorrectionAction(input: {
   breakStart: string;
   breakEnd: string;
 }): Promise<ActionResult<{ id: string }>> {
-  const session = await getMockSession();
-  if (!session) {
-    return { ok: false, error: { code: 'UNAUTHORIZED' } };
-  }
+  const guard = await requireSession();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = CorrectionSchema.safeParse(input);
   if (!parsed.success) {

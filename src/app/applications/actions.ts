@@ -3,11 +3,11 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
+import { requireSession } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
 import { recordApprovalAction } from '@/lib/data/approval-actions';
 import { withdrawCorrection } from '@/lib/data/clock-corrections';
 import { withdrawLeave } from '@/lib/data/leave-requests';
-import { getMockSession } from '@/lib/data/session';
 
 const WithdrawSchema = z.object({
   type: z.enum(['correction', 'leave']),
@@ -18,8 +18,9 @@ export async function withdrawRequestAction(input: {
   type: 'correction' | 'leave';
   id: string;
 }): Promise<ActionResult<{ id: string }>> {
-  const session = await getMockSession();
-  if (!session) return { ok: false, error: { code: 'UNAUTHORIZED' } };
+  const guard = await requireSession();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
 
   const parsed = WithdrawSchema.safeParse(input);
   if (!parsed.success) {

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
+import { canViewUserAttendance } from '@/lib/auth/policies';
 import { getEffectiveMonthlySummary } from '@/lib/data/attendance-closings';
 import {
   currentYearMonthJst,
@@ -18,7 +19,7 @@ import {
 import { getDailyNotesMap } from '@/lib/data/daily-notes';
 import { countPendingForApprover } from '@/lib/data/pending-approvals';
 import { getMockSession } from '@/lib/data/session';
-import { findMockUserById, isManagerOf } from '@/lib/data/users';
+import { findMockUserById } from '@/lib/data/users';
 
 const WEEKDAY_LABEL = ['日', '月', '火', '水', '木', '金', '土'] as const;
 
@@ -67,7 +68,7 @@ export default async function TeamAttendanceUserPage({
   const target = await findMockUserById(userId);
   if (!target) notFound();
 
-  if (session.role !== 'admin' && !(await isManagerOf(session.id, userId))) {
+  if (!(await canViewUserAttendance(session, userId))) {
     redirect('/team/attendance');
   }
 
