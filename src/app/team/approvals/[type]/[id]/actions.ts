@@ -48,67 +48,72 @@ export async function decideRequestAction(input: {
     };
   }
 
-  const isAdminActor = isAdmin(session);
-  const trimmed = parsed.data.comment.trim();
-  const result = await prisma.$transaction(async (tx) => {
-    const decided =
-      parsed.data.type === 'correction'
-        ? await decideCorrection(
-            {
-              id: parsed.data.id,
-              deciderId: session.id,
-              decision: parsed.data.decision,
-              isAdmin: isAdminActor,
-            },
-            tx,
-          )
-        : await decideLeave(
-            {
-              id: parsed.data.id,
-              deciderId: session.id,
-              decision: parsed.data.decision,
-              isAdmin: isAdminActor,
-            },
-            tx,
-          );
-    if (!decided.ok) return decided;
-    await recordApprovalAction(
-      {
-        requestType: parsed.data.type,
-        requestId: parsed.data.id,
-        actorId: session.id,
-        action: DECISION_TO_ACTION[parsed.data.decision],
-        comment: trimmed.length > 0 ? trimmed : null,
-      },
-      tx,
-    );
-    return decided;
-  });
+  try {
+    const isAdminActor = isAdmin(session);
+    const trimmed = parsed.data.comment.trim();
+    const result = await prisma.$transaction(async (tx) => {
+      const decided =
+        parsed.data.type === 'correction'
+          ? await decideCorrection(
+              {
+                id: parsed.data.id,
+                deciderId: session.id,
+                decision: parsed.data.decision,
+                isAdmin: isAdminActor,
+              },
+              tx,
+            )
+          : await decideLeave(
+              {
+                id: parsed.data.id,
+                deciderId: session.id,
+                decision: parsed.data.decision,
+                isAdmin: isAdminActor,
+              },
+              tx,
+            );
+      if (!decided.ok) return decided;
+      await recordApprovalAction(
+        {
+          requestType: parsed.data.type,
+          requestId: parsed.data.id,
+          actorId: session.id,
+          action: DECISION_TO_ACTION[parsed.data.decision],
+          comment: trimmed.length > 0 ? trimmed : null,
+        },
+        tx,
+      );
+      return decided;
+    });
 
-  if (!result.ok) {
-    if (result.reason === 'NOT_FOUND') {
-      return { ok: false, error: { code: 'NOT_FOUND' } };
+    if (!result.ok) {
+      if (result.reason === 'NOT_FOUND') {
+        return { ok: false, error: { code: 'NOT_FOUND' } };
+      }
+      if (result.reason === 'FORBIDDEN') {
+        return { ok: false, error: { code: 'FORBIDDEN' } };
+      }
+      return {
+        ok: false,
+        error: {
+          code: 'CONFLICT',
+          message: 'この申請は既に処理済みです',
+        },
+      };
     }
-    if (result.reason === 'FORBIDDEN') {
-      return { ok: false, error: { code: 'FORBIDDEN' } };
+
+    revalidatePath('/team/approvals');
+    revalidatePath(`/team/approvals/${parsed.data.type}/${parsed.data.id}`);
+    revalidatePath('/applications');
+    if (parsed.data.type === 'correction' && 'targetDate' in result.request) {
+      revalidatePath(`/attendance/${result.request.targetDate}`);
+      revalidatePath('/attendance');
+      revalidatePath(`/team/attendance/${result.request.requesterId}`);
     }
-    return {
-      ok: false,
-      error: {
-        code: 'CONFLICT',
-        message: 'この申請は既に処理済みです',
-      },
-    };
-  }
 
-  revalidatePath('/team/approvals');
-  revalidatePath(`/team/approvals/${parsed.data.type}/${parsed.data.id}`);
-  revalidatePath('/applications');
-  if (parsed.data.type === 'correction' && 'targetDate' in result.request) {
-    revalidatePath(`/attendance/${result.request.targetDate}`);
-    revalidatePath('/attendance');
-    revalidatePath(`/team/attendance/${result.request.requesterId}`);
+    return { ok: true, data: { id: parsed.data.id } };
+  } catch (e) {
+    console.error('decideRequestAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
   }
-
-  return { ok: true, data: { id: parsed.data.id } };
 }

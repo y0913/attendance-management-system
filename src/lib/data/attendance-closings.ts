@@ -140,8 +140,14 @@ export async function deleteClosing(
   try {
     const removed = await db.attendanceClosing.delete({ where: { id } });
     return toMockClosing(removed);
-  } catch {
-    return null;
+  } catch (e) {
+    if (
+      e instanceof Prisma.PrismaClientKnownRequestError &&
+      e.code === 'P2025'
+    ) {
+      return null;
+    }
+    throw e;
   }
 }
 

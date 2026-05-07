@@ -30,54 +30,59 @@ export async function withdrawRequestAction(input: {
     };
   }
 
-  const result = await prisma.$transaction(async (tx) => {
-    const withdrew =
-      parsed.data.type === 'correction'
-        ? await withdrawCorrection(
-            { id: parsed.data.id, requesterId: session.id },
-            tx,
-          )
-        : await withdrawLeave(
-            { id: parsed.data.id, requesterId: session.id },
-            tx,
-          );
-    if (!withdrew.ok) return withdrew;
-    await recordApprovalAction(
-      {
-        requestType: parsed.data.type,
-        requestId: parsed.data.id,
-        actorId: session.id,
-        action: 'withdraw',
-        comment: null,
-      },
-      tx,
-    );
-    return withdrew;
-  });
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const withdrew =
+        parsed.data.type === 'correction'
+          ? await withdrawCorrection(
+              { id: parsed.data.id, requesterId: session.id },
+              tx,
+            )
+          : await withdrawLeave(
+              { id: parsed.data.id, requesterId: session.id },
+              tx,
+            );
+      if (!withdrew.ok) return withdrew;
+      await recordApprovalAction(
+        {
+          requestType: parsed.data.type,
+          requestId: parsed.data.id,
+          actorId: session.id,
+          action: 'withdraw',
+          comment: null,
+        },
+        tx,
+      );
+      return withdrew;
+    });
 
-  if (!result.ok) {
-    if (result.reason === 'NOT_FOUND') {
-      return { ok: false, error: { code: 'NOT_FOUND' } };
+    if (!result.ok) {
+      if (result.reason === 'NOT_FOUND') {
+        return { ok: false, error: { code: 'NOT_FOUND' } };
+      }
+      if (result.reason === 'FORBIDDEN') {
+        return { ok: false, error: { code: 'FORBIDDEN' } };
+      }
+      return {
+        ok: false,
+        error: {
+          code: 'CONFLICT',
+          message: 'この申請は既に処理済みのため取下げできません',
+        },
+      };
     }
-    if (result.reason === 'FORBIDDEN') {
-      return { ok: false, error: { code: 'FORBIDDEN' } };
+
+    revalidatePath('/applications');
+    revalidatePath('/team/approvals');
+    revalidatePath('/admin/approvals');
+    revalidatePath(`/team/approvals/${parsed.data.type}/${parsed.data.id}`);
+    if (parsed.data.type === 'correction' && 'targetDate' in result.request) {
+      revalidatePath(`/attendance/${result.request.targetDate}`);
     }
-    return {
-      ok: false,
-      error: {
-        code: 'CONFLICT',
-        message: 'この申請は既に処理済みのため取下げできません',
-      },
-    };
-  }
 
-  revalidatePath('/applications');
-  revalidatePath('/team/approvals');
-  revalidatePath('/admin/approvals');
-  revalidatePath(`/team/approvals/${parsed.data.type}/${parsed.data.id}`);
-  if (parsed.data.type === 'correction' && 'targetDate' in result.request) {
-    revalidatePath(`/attendance/${result.request.targetDate}`);
+    return { ok: true, data: { id: parsed.data.id } };
+  } catch (e) {
+    console.error('withdrawRequestAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
   }
-
-  return { ok: true, data: { id: parsed.data.id } };
 }

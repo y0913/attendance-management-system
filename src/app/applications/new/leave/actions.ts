@@ -71,23 +71,28 @@ export async function submitLeaveAction(input: {
     }
   }
 
-  const result = await submitLeave({
-    requesterId: session.id,
-    leaveType: 'paid',
-    dayUnit: parsed.data.dayUnit,
-    startDate: parsed.data.startDate,
-    endDate: parsed.data.endDate,
-    reason: parsed.data.reason,
-  });
+  try {
+    const result = await submitLeave({
+      requesterId: session.id,
+      leaveType: 'paid',
+      dayUnit: parsed.data.dayUnit,
+      startDate: parsed.data.startDate,
+      endDate: parsed.data.endDate,
+      reason: parsed.data.reason,
+    });
 
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: { code: 'CONFLICT', message: '半日有給は単一日のみ指定可能です' },
-    };
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: { code: 'CONFLICT', message: '半日有給は単一日のみ指定可能です' },
+      };
+    }
+
+    revalidatePath('/applications');
+
+    return { ok: true, data: { id: result.request.id } };
+  } catch (e) {
+    console.error('submitLeaveAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
   }
-
-  revalidatePath('/applications');
-
-  return { ok: true, data: { id: result.request.id } };
 }

@@ -37,16 +37,24 @@ export async function punchClockAction(
     };
   }
 
-  const state = await getClockState(session.id);
-  if (!ALLOWED[state].includes(parsed.data.type)) {
-    return {
-      ok: false,
-      error: { code: 'CONFLICT', message: `現在の状態(${state})では実行できません` },
-    };
+  try {
+    const state = await getClockState(session.id);
+    if (!ALLOWED[state].includes(parsed.data.type)) {
+      return {
+        ok: false,
+        error: {
+          code: 'CONFLICT',
+          message: `現在の状態(${state})では実行できません`,
+        },
+      };
+    }
+
+    await appendClock(session.id, parsed.data.type);
+    revalidatePath('/clock');
+
+    return { ok: true, data: { type: parsed.data.type } };
+  } catch (e) {
+    console.error('punchClockAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
   }
-
-  await appendClock(session.id, parsed.data.type);
-  revalidatePath('/clock');
-
-  return { ok: true, data: { type: parsed.data.type } };
 }

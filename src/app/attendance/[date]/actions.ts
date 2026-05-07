@@ -36,11 +36,16 @@ export async function saveDailyNoteAction(
     };
   }
 
-  await upsertDailyNote(session.id, parsed.data.jstDate, parsed.data.content);
-  revalidatePath('/attendance');
-  revalidatePath(`/attendance/${parsed.data.jstDate}`);
+  try {
+    await upsertDailyNote(session.id, parsed.data.jstDate, parsed.data.content);
+    revalidatePath('/attendance');
+    revalidatePath(`/attendance/${parsed.data.jstDate}`);
 
-  return { ok: true, data: { jstDate: parsed.data.jstDate } };
+    return { ok: true, data: { jstDate: parsed.data.jstDate } };
+  } catch (e) {
+    console.error('saveDailyNoteAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
+  }
 }
 
 const TimeOrEmpty = z
@@ -79,45 +84,53 @@ export async function submitCorrectionAction(input: {
     };
   }
 
-  const before = await captureCurrentSnapshot(session.id, parsed.data.jstDate);
-  const after = {
-    clockIn: blank(parsed.data.clockIn),
-    clockOut: blank(parsed.data.clockOut),
-    breakStart: blank(parsed.data.breakStart),
-    breakEnd: blank(parsed.data.breakEnd),
-  };
-
-  // findActiveCorrection と submitCorrection を 1 tx に束ねて、
-  // 同日二重申請の TOCTOU を最小化する。
-  const result = await prisma.$transaction(async (tx) => {
-    const existing = await findActiveCorrection(
+  try {
+    const before = await captureCurrentSnapshot(
       session.id,
       parsed.data.jstDate,
-      tx,
     );
-    if (existing) return { duplicate: true as const };
-    const req = await submitCorrection(
-      {
-        requesterId: session.id,
-        targetDate: parsed.data.jstDate,
-        reason: parsed.data.reason,
-        before,
-        after,
-      },
-      tx,
-    );
-    return { duplicate: false as const, req };
-  });
-
-  if (result.duplicate) {
-    return {
-      ok: false,
-      error: { code: 'CONFLICT', message: '同じ日付で審査中の申請があります' },
+    const after = {
+      clockIn: blank(parsed.data.clockIn),
+      clockOut: blank(parsed.data.clockOut),
+      breakStart: blank(parsed.data.breakStart),
+      breakEnd: blank(parsed.data.breakEnd),
     };
+
+    // findActiveCorrection と submitCorrection を 1 tx に束ねて、
+    // 同日二重申請の TOCTOU を最小化する。
+    const result = await prisma.$transaction(async (tx) => {
+      const existing = await findActiveCorrection(
+        session.id,
+        parsed.data.jstDate,
+        tx,
+      );
+      if (existing) return { duplicate: true as const };
+      const req = await submitCorrection(
+        {
+          requesterId: session.id,
+          targetDate: parsed.data.jstDate,
+          reason: parsed.data.reason,
+          before,
+          after,
+        },
+        tx,
+      );
+      return { duplicate: false as const, req };
+    });
+
+    if (result.duplicate) {
+      return {
+        ok: false,
+        error: { code: 'CONFLICT', message: '同じ日付で審査中の申請があります' },
+      };
+    }
+
+    revalidatePath(`/attendance/${parsed.data.jstDate}`);
+    revalidatePath('/applications');
+
+    return { ok: true, data: { id: result.req.id } };
+  } catch (e) {
+    console.error('submitCorrectionAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
   }
-
-  revalidatePath(`/attendance/${parsed.data.jstDate}`);
-  revalidatePath('/applications');
-
-  return { ok: true, data: { id: result.req.id } };
 }

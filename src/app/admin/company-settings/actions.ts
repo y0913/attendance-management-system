@@ -46,34 +46,39 @@ export async function updateCompanySettingsAction(input: {
     };
   }
 
-  const before = await getCompany();
-  await prisma.$transaction(async (tx) => {
-    const after = await updateCompany(
-      {
-        name: parsed.data.name.trim(),
-        closingDay: parsed.data.closingDay,
-        midMonthRateChangeStrategy: parsed.data.midMonthRateChangeStrategy,
-        monthlyStandardHours: parsed.data.monthlyStandardHours,
-        legalHolidayWeekday: parsed.data.legalHolidayWeekday,
-      },
-      tx,
-    );
-    await recordAuditLog(
-      {
-        entityType: 'company',
-        entityId: after.id,
-        action: 'update',
-        actorId: session.id,
-        before,
-        after,
-      },
-      tx,
-    );
-  });
+  try {
+    const before = await getCompany();
+    await prisma.$transaction(async (tx) => {
+      const after = await updateCompany(
+        {
+          name: parsed.data.name.trim(),
+          closingDay: parsed.data.closingDay,
+          midMonthRateChangeStrategy: parsed.data.midMonthRateChangeStrategy,
+          monthlyStandardHours: parsed.data.monthlyStandardHours,
+          legalHolidayWeekday: parsed.data.legalHolidayWeekday,
+        },
+        tx,
+      );
+      await recordAuditLog(
+        {
+          entityType: 'company',
+          entityId: after.id,
+          action: 'update',
+          actorId: session.id,
+          before,
+          after,
+        },
+        tx,
+      );
+    });
 
-  revalidatePath('/admin/company-settings');
-  revalidatePath('/admin/dashboard');
-  revalidatePath('/admin/audit-logs');
+    revalidatePath('/admin/company-settings');
+    revalidatePath('/admin/dashboard');
+    revalidatePath('/admin/audit-logs');
 
-  return { ok: true, data: undefined };
+    return { ok: true, data: undefined };
+  } catch (e) {
+    console.error('updateCompanySettingsAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
+  }
 }

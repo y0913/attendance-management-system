@@ -114,68 +114,73 @@ export async function upsertWorkRuleAction(
     | { ok: true; id: string }
     | { ok: false; code: 'NOT_FOUND' | 'CONFLICT'; message?: string };
 
-  const result = await prisma.$transaction(async (tx): Promise<Result> => {
-    if (await isValidFromTaken(validFrom, data.id, tx)) {
-      return {
-        ok: false,
-        code: 'CONFLICT',
-        message: 'その適用開始日に既に別バージョンが存在します',
-      };
-    }
-    if (data.id) {
-      const target = await findWorkRuleVersionById(data.id);
-      if (!target) return { ok: false, code: 'NOT_FOUND' };
-      if (!isFutureVersion(target)) {
+  try {
+    const result = await prisma.$transaction(async (tx): Promise<Result> => {
+      if (await isValidFromTaken(validFrom, data.id, tx)) {
         return {
           ok: false,
           code: 'CONFLICT',
-          message: '現行・過去バージョンは編集できません',
+          message: 'その適用開始日に既に別バージョンが存在します',
         };
       }
-      const beforeSnap = { ...target };
-      const updated = await updateWorkRuleVersion(data.id, ruleInput, tx);
+      if (data.id) {
+        const target = await findWorkRuleVersionById(data.id);
+        if (!target) return { ok: false, code: 'NOT_FOUND' };
+        if (!isFutureVersion(target)) {
+          return {
+            ok: false,
+            code: 'CONFLICT',
+            message: '現行・過去バージョンは編集できません',
+          };
+        }
+        const beforeSnap = { ...target };
+        const updated = await updateWorkRuleVersion(data.id, ruleInput, tx);
+        await recordAuditLog(
+          {
+            entityType: 'work_rule_version',
+            entityId: data.id,
+            action: 'update',
+            actorId: session.id,
+            before: beforeSnap,
+            after: updated,
+          },
+          tx,
+        );
+        return { ok: true, id: data.id };
+      }
+      const created = await createWorkRuleVersion(ruleInput, session.id, tx);
       await recordAuditLog(
         {
           entityType: 'work_rule_version',
-          entityId: data.id,
-          action: 'update',
+          entityId: created.id,
+          action: 'create',
           actorId: session.id,
-          before: beforeSnap,
-          after: updated,
+          before: null,
+          after: created,
         },
         tx,
       );
-      return { ok: true, id: data.id };
+      return { ok: true, id: created.id };
+    });
+
+    if (!result.ok) {
+      return {
+        ok: false,
+        error: {
+          code: result.code,
+          ...(result.message ? { message: result.message } : {}),
+        },
+      };
     }
-    const created = await createWorkRuleVersion(ruleInput, session.id, tx);
-    await recordAuditLog(
-      {
-        entityType: 'work_rule_version',
-        entityId: created.id,
-        action: 'create',
-        actorId: session.id,
-        before: null,
-        after: created,
-      },
-      tx,
-    );
-    return { ok: true, id: created.id };
-  });
 
-  if (!result.ok) {
-    return {
-      ok: false,
-      error: {
-        code: result.code,
-        ...(result.message ? { message: result.message } : {}),
-      },
-    };
+    revalidatePath('/admin/work-rules');
+    if (data.id) revalidatePath(`/admin/work-rules/${data.id}`);
+    revalidatePath('/admin/audit-logs');
+    return { ok: true, data: { id: result.id } };
+  } catch (e) {
+    console.error('upsertWorkRuleAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
   }
-
-  revalidatePath('/admin/work-rules');
-  if (data.id) revalidatePath(`/admin/work-rules/${data.id}`);
-  revalidatePath('/admin/audit-logs');
-  return { ok: true, data: { id: result.id } };
 }
 
 export async function deleteWorkRuleAction(input: {
@@ -185,34 +190,39 @@ export async function deleteWorkRuleAction(input: {
   if (!guard.ok) return guard.result;
   const session = guard.session;
 
-  const target = await findWorkRuleVersionById(input.id);
-  if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
-  if (!isFutureVersion(target)) {
-    return {
-      ok: false,
-      error: {
-        code: 'CONFLICT',
-        message: '現行・過去バージョンは削除できません',
-      },
-    };
-  }
+  try {
+    const target = await findWorkRuleVersionById(input.id);
+    if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
+    if (!isFutureVersion(target)) {
+      return {
+        ok: false,
+        error: {
+          code: 'CONFLICT',
+          message: '現行・過去バージョンは削除できません',
+        },
+      };
+    }
 
-  const beforeSnap = { ...target };
-  await prisma.$transaction(async (tx) => {
-    await deleteWorkRuleVersion(input.id, tx);
-    await recordAuditLog(
-      {
-        entityType: 'work_rule_version',
-        entityId: input.id,
-        action: 'delete',
-        actorId: session.id,
-        before: beforeSnap,
-        after: null,
-      },
-      tx,
-    );
-  });
-  revalidatePath('/admin/work-rules');
-  revalidatePath('/admin/audit-logs');
-  return { ok: true, data: undefined };
+    const beforeSnap = { ...target };
+    await prisma.$transaction(async (tx) => {
+      await deleteWorkRuleVersion(input.id, tx);
+      await recordAuditLog(
+        {
+          entityType: 'work_rule_version',
+          entityId: input.id,
+          action: 'delete',
+          actorId: session.id,
+          before: beforeSnap,
+          after: null,
+        },
+        tx,
+      );
+    });
+    revalidatePath('/admin/work-rules');
+    revalidatePath('/admin/audit-logs');
+    return { ok: true, data: undefined };
+  } catch (e) {
+    console.error('deleteWorkRuleAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
+  }
 }

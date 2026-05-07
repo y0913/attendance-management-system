@@ -1,8 +1,13 @@
 // Phase 2: 内部を Prisma 経由に書き換え。API 形は維持しつつ async 化。
 // 旧 mock 配列・ensureSeeded は廃止し、seed は prisma/seed.ts へ移動済み。
 
-import type { EmploymentType, Role, User } from '@prisma/client';
+import { Prisma, type EmploymentType, type Role, type User } from '@prisma/client';
 import { prisma, type DbClient } from '@/lib/db';
+
+// Prisma のレコード未発見エラー (P2025) のみ意図的に null で吸収する。
+// それ以外（接続エラー・制約違反など）は throw して呼び出し側に委ねる。
+const isNotFoundError = (e: unknown): boolean =>
+  e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025';
 
 export interface MockUser {
   id: string;
@@ -127,8 +132,9 @@ export async function updateMockUser(
       },
     });
     return toMockUser(user);
-  } catch {
-    return null;
+  } catch (e) {
+    if (isNotFoundError(e)) return null;
+    throw e;
   }
 }
 
@@ -143,8 +149,9 @@ export async function setUserDeactivation(
       data: { deactivatedAt },
     });
     return toMockUser(user);
-  } catch {
-    return null;
+  } catch (e) {
+    if (isNotFoundError(e)) return null;
+    throw e;
   }
 }
 

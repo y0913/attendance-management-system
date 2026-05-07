@@ -82,29 +82,67 @@ export async function upsertEmployeeAction(
     };
   }
 
-  if (data.managerId !== null && !(await findMockUserById(data.managerId))) {
-    return {
-      ok: false,
-      error: { code: 'VALIDATION', details: { managerId: '存在しないユーザー' } },
-    };
-  }
+  try {
+    if (data.managerId !== null && !(await findMockUserById(data.managerId))) {
+      return {
+        ok: false,
+        error: {
+          code: 'VALIDATION',
+          details: { managerId: '存在しないユーザー' },
+        },
+      };
+    }
 
-  if (await isEmailTaken(data.email, data.id)) {
-    return {
-      ok: false,
-      error: { code: 'CONFLICT', message: 'メールアドレスが既に使われています' },
-    };
-  }
+    if (await isEmailTaken(data.email, data.id)) {
+      return {
+        ok: false,
+        error: {
+          code: 'CONFLICT',
+          message: 'メールアドレスが既に使われています',
+        },
+      };
+    }
 
-  const hiredAt = toJstStartOfDay(data.hiredAt);
+    const hiredAt = toJstStartOfDay(data.hiredAt);
 
-  if (data.id) {
-    const target = await findMockUserById(data.id);
-    if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
-    const beforeSnap = { ...target };
-    await prisma.$transaction(async (tx) => {
-      const updated = await updateMockUser(
-        data.id!,
+    if (data.id) {
+      const target = await findMockUserById(data.id);
+      if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
+      const beforeSnap = { ...target };
+      await prisma.$transaction(async (tx) => {
+        const updated = await updateMockUser(
+          data.id!,
+          {
+            name: data.name,
+            email: data.email,
+            role: data.role,
+            managerId: data.managerId,
+            employmentType: data.employmentType,
+            hiredAt,
+            baseSalary: data.baseSalary,
+          },
+          tx,
+        );
+        await recordAuditLog(
+          {
+            entityType: 'user',
+            entityId: data.id!,
+            action: 'update',
+            actorId: session.id,
+            before: beforeSnap,
+            after: updated,
+          },
+          tx,
+        );
+      });
+      revalidatePath('/admin/employees');
+      revalidatePath(`/admin/employees/${data.id}`);
+      revalidatePath('/admin/audit-logs');
+      return { ok: true, data: { id: data.id } };
+    }
+
+    const created = await prisma.$transaction(async (tx) => {
+      const user = await createMockUser(
         {
           name: data.name,
           email: data.email,
@@ -119,50 +157,23 @@ export async function upsertEmployeeAction(
       await recordAuditLog(
         {
           entityType: 'user',
-          entityId: data.id!,
-          action: 'update',
+          entityId: user.id,
+          action: 'create',
           actorId: session.id,
-          before: beforeSnap,
-          after: updated,
+          before: null,
+          after: user,
         },
         tx,
       );
+      return user;
     });
     revalidatePath('/admin/employees');
-    revalidatePath(`/admin/employees/${data.id}`);
     revalidatePath('/admin/audit-logs');
-    return { ok: true, data: { id: data.id } };
+    return { ok: true, data: { id: created.id } };
+  } catch (e) {
+    console.error('upsertEmployeeAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
   }
-
-  const created = await prisma.$transaction(async (tx) => {
-    const user = await createMockUser(
-      {
-        name: data.name,
-        email: data.email,
-        role: data.role,
-        managerId: data.managerId,
-        employmentType: data.employmentType,
-        hiredAt,
-        baseSalary: data.baseSalary,
-      },
-      tx,
-    );
-    await recordAuditLog(
-      {
-        entityType: 'user',
-        entityId: user.id,
-        action: 'create',
-        actorId: session.id,
-        before: null,
-        after: user,
-      },
-      tx,
-    );
-    return user;
-  });
-  revalidatePath('/admin/employees');
-  revalidatePath('/admin/audit-logs');
-  return { ok: true, data: { id: created.id } };
 }
 
 export async function setEmployeeDeactivationAction(input: {
@@ -191,30 +202,35 @@ export async function setEmployeeDeactivationAction(input: {
     };
   }
 
-  const target = await findMockUserById(parsed.data.id);
-  if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
+  try {
+    const target = await findMockUserById(parsed.data.id);
+    if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
-  const beforeSnap = { ...target };
-  await prisma.$transaction(async (tx) => {
-    const updated = await setUserDeactivation(
-      parsed.data.id,
-      parsed.data.deactivate ? new Date() : null,
-      tx,
-    );
-    await recordAuditLog(
-      {
-        entityType: 'user',
-        entityId: parsed.data.id,
-        action: parsed.data.deactivate ? 'deactivate' : 'reactivate',
-        actorId: session.id,
-        before: beforeSnap,
-        after: updated,
-      },
-      tx,
-    );
-  });
-  revalidatePath('/admin/employees');
-  revalidatePath(`/admin/employees/${parsed.data.id}`);
-  revalidatePath('/admin/audit-logs');
-  return { ok: true, data: { id: parsed.data.id } };
+    const beforeSnap = { ...target };
+    await prisma.$transaction(async (tx) => {
+      const updated = await setUserDeactivation(
+        parsed.data.id,
+        parsed.data.deactivate ? new Date() : null,
+        tx,
+      );
+      await recordAuditLog(
+        {
+          entityType: 'user',
+          entityId: parsed.data.id,
+          action: parsed.data.deactivate ? 'deactivate' : 'reactivate',
+          actorId: session.id,
+          before: beforeSnap,
+          after: updated,
+        },
+        tx,
+      );
+    });
+    revalidatePath('/admin/employees');
+    revalidatePath(`/admin/employees/${parsed.data.id}`);
+    revalidatePath('/admin/audit-logs');
+    return { ok: true, data: { id: parsed.data.id } };
+  } catch (e) {
+    console.error('setEmployeeDeactivationAction failed', e);
+    return { ok: false, error: { code: 'INTERNAL' } };
+  }
 }

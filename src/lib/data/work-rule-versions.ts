@@ -3,8 +3,11 @@
 // Prisma の Decimal 型 ↔ number は Number() で変換。
 // classifyVersionStatus は pure 関数のままで OK（既に取得済みの versions を渡す）。
 
-import type { WorkRuleVersion } from '@prisma/client';
+import { Prisma, type WorkRuleVersion } from '@prisma/client';
 import { prisma, type DbClient } from '@/lib/db';
+
+const isNotFoundError = (e: unknown): boolean =>
+  e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025';
 
 export interface MockWorkRuleVersion {
   id: string;
@@ -223,8 +226,9 @@ export async function updateWorkRuleVersion(
       },
     });
     return toMockWorkRuleVersion(updated);
-  } catch {
-    return null;
+  } catch (e) {
+    if (isNotFoundError(e)) return null;
+    throw e;
   }
 }
 
@@ -235,8 +239,9 @@ export async function deleteWorkRuleVersion(
   try {
     await db.workRuleVersion.delete({ where: { id } });
     return true;
-  } catch {
-    return false;
+  } catch (e) {
+    if (isNotFoundError(e)) return false;
+    throw e;
   }
 }
 
