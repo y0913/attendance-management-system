@@ -42,7 +42,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (existing.deactivatedAt) return false;
       return true;
     },
-    async jwt({ token, user }) {
+    async jwt({ token, user, trigger }) {
+      // 初回 sign-in (user オブジェクトが存在する) → DB から焼き込み
       if (user?.email) {
         const u = await prisma.user.findUnique({
           where: { email: user.email },
@@ -53,8 +54,44 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           token.email = u.email;
           token.name = u.name;
           token.role = u.role;
+          token.refreshedAt = Date.now();
         }
+        return token;
       }
+
+      // 既存トークン: 一定時間経過 or 明示 update() で role を再取得。
+      // middleware が見る JWT クレームと DB の真実を同期させる目的。
+      // page / server action は getMockSession 経由で常に DB 最新を読むので
+      // ここの refresh は middleware 用と捉えて良い。
+      const ROLE_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 分
+      const refreshedAt = token.refreshedAt ?? 0;
+      const isStale = Date.now() - refreshedAt > ROLE_REFRESH_INTERVAL_MS;
+      if ((trigger === 'update' || isStale) && token.id) {
+        const u = await prisma.user.findUnique({
+          where: { id: token.id },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            deactivatedAt: true,
+          },
+        });
+        if (!u || u.deactivatedAt) {
+          // 削除済 or 無効化済 → トークンを実質無効化。
+          // middleware は req.auth?.user?.id が無いので未認証扱いし /login にリダイレクト。
+          delete token.id;
+          delete token.role;
+          delete token.email;
+          delete token.name;
+          return token;
+        }
+        token.role = u.role;
+        token.name = u.name;
+        token.email = u.email;
+        token.refreshedAt = Date.now();
+      }
+
       return token;
     },
   },
