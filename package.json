@@ -11,6 +11,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "vitest run --config vitest.config.integration.ts",
+    "test:e2e": "playwright test",
+    "db:test:setup": "node scripts/setup-test-db.mjs",
     "fetch-fonts": "node scripts/fetch-fonts.mjs",
     "postinstall": "node scripts/fetch-fonts.mjs && prisma generate"
   },

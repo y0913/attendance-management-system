@@ -11,5 +11,7 @@ export default defineConfig({
     environment: 'node',
     globals: false,
     include: ['src/**/*.test.ts'],
+    // integration test は別 config (vitest.config.integration.ts) で走らせる
+    exclude: ['tests/integration/**', 'node_modules/**'],
   },
 });
