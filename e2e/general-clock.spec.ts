@@ -1,22 +1,16 @@
 // 一般ユーザー: ログイン → 出勤 → 退勤 までの最小 golden path
 
 import { test, expect } from '@playwright/test';
-import {
-  cleanupUsersByEmailPrefix,
-  ensureCompany,
-  seedUser,
-} from './helpers/db';
+import { ensureCompany, resetTestDb, seedUser } from './helpers/db';
 import { loginAs } from './helpers/login';
 
-const PREFIX = 'e2e-general-clock-';
-
 test.beforeEach(async () => {
-  await cleanupUsersByEmailPrefix(PREFIX);
+  await resetTestDb();
   await ensureCompany();
 });
 
 test('general user can sign in, clock in, and clock out', async ({ page }) => {
-  const email = `${PREFIX}${Date.now()}@example.com`;
+  const email = `e2e-general-${Date.now()}@example.com`;
   await seedUser({ email, role: 'general' });
 
   await loginAs(page, email);

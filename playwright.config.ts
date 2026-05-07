@@ -16,8 +16,10 @@ const BASE_URL = `http://localhost:${PORT}`;
 export default defineConfig({
   testDir: './e2e',
   timeout: 30_000,
-  // testごとに seed する設計なので並列で OK
-  fullyParallel: true,
+  // 全テストが同じ test DB を共有しているので並列で TRUNCATE が衝突する。
+  // 数本しかない E2E は逐次実行で十分。
+  fullyParallel: false,
+  workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
     baseURL: BASE_URL,

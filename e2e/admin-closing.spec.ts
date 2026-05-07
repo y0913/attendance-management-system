@@ -1,23 +1,17 @@
 // 管理者: ログイン → 月次締め画面で「締める」を実行 → 締め済み表示
 
 import { test, expect } from '@playwright/test';
-import {
-  cleanupUsersByEmailPrefix,
-  ensureCompany,
-  seedUser,
-} from './helpers/db';
+import { ensureCompany, resetTestDb, seedUser } from './helpers/db';
 import { loginAs } from './helpers/login';
 
-const PREFIX = 'e2e-admin-close-';
-
 test.beforeEach(async () => {
-  await cleanupUsersByEmailPrefix(PREFIX);
+  await resetTestDb();
   await ensureCompany();
 });
 
 test('admin can close a month for a user', async ({ page }) => {
-  const adminEmail = `${PREFIX}admin-${Date.now()}@example.com`;
-  const generalEmail = `${PREFIX}general-${Date.now()}@example.com`;
+  const adminEmail = `e2e-admin-${Date.now()}@example.com`;
+  const generalEmail = `e2e-general-${Date.now()}@example.com`;
   await seedUser({
     email: adminEmail,
     role: 'admin',
@@ -35,7 +29,7 @@ test('admin can close a month for a user', async ({ page }) => {
   await loginAs(page, adminEmail);
 
   await page.goto('/admin/closings');
-  await expect(page.getByRole('heading', { name: /月次締め/ })).toBeVisible();
+  await expect(page.getByText('月次締め処理').first()).toBeVisible();
 
   // 対象ユーザーの行で「締める」ボタンを押す
   const generalRow = page.locator('tr', { hasText: 'E2E 部下' }).first();

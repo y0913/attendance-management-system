@@ -1,30 +1,23 @@
 // 承認者: ログイン → 部下の有給申請を承認 → ステータスが「承認済」になる
 
 import { test, expect } from '@playwright/test';
-import {
-  cleanupUsersByEmailPrefix,
-  ensureCompany,
-  prisma,
-  seedUser,
-} from './helpers/db';
+import { ensureCompany, prisma, resetTestDb, seedUser } from './helpers/db';
 import { loginAs } from './helpers/login';
 
-const PREFIX = 'e2e-approver-approve-';
-
 test.beforeEach(async () => {
-  await cleanupUsersByEmailPrefix(PREFIX);
+  await resetTestDb();
   await ensureCompany();
 });
 
 test('approver can approve a subordinate leave request', async ({ page }) => {
   const ts = Date.now();
   const approver = await seedUser({
-    email: `${PREFIX}approver-${ts}@example.com`,
+    email: `e2e-approver-${ts}@example.com`,
     role: 'approver',
     name: 'E2E 承認者',
   });
   const general = await seedUser({
-    email: `${PREFIX}general-${ts}@example.com`,
+    email: `e2e-general-${ts}@example.com`,
     role: 'general',
     name: 'E2E 部下',
     managerId: approver.id,
@@ -52,11 +45,13 @@ test('approver can approve a subordinate leave request', async ({ page }) => {
 
   // 申請詳細ページに遷移
   await page.goto(`/team/approvals/leave/${leave.id}`);
-  await expect(page.getByRole('heading', { name: /有給/ })).toBeVisible();
+  await expect(page.getByText('有給休暇').first()).toBeVisible();
 
-  // 承認ボタンを押す
+  // 承認ボタンを押す → 承認後は /team/approvals (一覧) にリダイレクト
   await page.getByRole('button', { name: '承認', exact: true }).click();
+  await page.waitForURL(/\/team\/approvals$/, { timeout: 10_000 });
 
-  // ステータスが「承認済」に切り替わる (page reload / revalidate 後)
-  await expect(page.getByText('承認済')).toBeVisible({ timeout: 10_000 });
+  // 詳細ページに戻ってステータスが「承認済」になっていることを確認
+  await page.goto(`/team/approvals/leave/${leave.id}`);
+  await expect(page.getByText('承認済').first()).toBeVisible({ timeout: 10_000 });
 });

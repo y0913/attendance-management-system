@@ -47,10 +47,30 @@ export async function seedUser(input: SeedUserInput) {
   });
 }
 
-export async function cleanupUsersByEmailPrefix(prefix: string): Promise<void> {
-  await prisma.user.deleteMany({
-    where: { email: { startsWith: prefix } },
-  });
+// E2E は test DB を使うので、テスト前に user-data 系テーブルを全部 TRUNCATE。
+// companies は seed として残す。
+const TRUNCATE_TABLES = [
+  'audit_logs',
+  'approval_actions',
+  'leave_requests',
+  'clock_correction_requests',
+  'leave_grants',
+  'attendance_closings',
+  'daily_attendances',
+  'time_clocks',
+  'daily_notes',
+  'sessions',
+  'accounts',
+  'verification_tokens',
+  'work_rule_versions',
+  'users',
+];
+
+export async function resetTestDb(): Promise<void> {
+  const list = TRUNCATE_TABLES.map((t) => `"${t}"`).join(', ');
+  await prisma.$executeRawUnsafe(
+    `TRUNCATE TABLE ${list} RESTART IDENTITY CASCADE`,
+  );
 }
 
 export { prisma };
