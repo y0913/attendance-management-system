@@ -50,6 +50,17 @@ const denyOrRedirect = (
   return NextResponse.redirect(url);
 };
 
+// クリックジャッキングおよび MIME sniffing 対策のセキュリティヘッダ。
+// Server Action 自体は Next.js が Origin 検証して CSRF を弾くが、
+// iframe 埋め込み経由の clickjacking はヘッダ層で別途防ぐ必要がある。
+// すべてのレスポンス経路（next / redirect / 401 / 403）で付与する。
+const applySecurityHeaders = (res: Response): Response => {
+  res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  return res;
+};
+
 export const proxy = auth((req) => {
   const { pathname } = req.nextUrl;
   const isAuthed = !!req.auth?.user?.id;
@@ -57,29 +68,29 @@ export const proxy = auth((req) => {
   const isPublic = isPublicPath(pathname);
 
   if (!isAuthed && !isPublic) {
-    return denyOrRedirect(req, 'unauth');
+    return applySecurityHeaders(denyOrRedirect(req, 'unauth'));
   }
 
   if (isAuthed && pathname === '/login') {
     const url = req.nextUrl.clone();
     url.pathname = '/clock';
-    return NextResponse.redirect(url);
+    return applySecurityHeaders(NextResponse.redirect(url));
   }
 
   if (isAuthed) {
     if (requiresAdmin(pathname) && role !== 'admin') {
-      return denyOrRedirect(req, 'forbidden');
+      return applySecurityHeaders(denyOrRedirect(req, 'forbidden'));
     }
     if (
       requiresApprover(pathname) &&
       role !== 'approver' &&
       role !== 'admin'
     ) {
-      return denyOrRedirect(req, 'forbidden');
+      return applySecurityHeaders(denyOrRedirect(req, 'forbidden'));
     }
   }
 
-  return NextResponse.next();
+  return applySecurityHeaders(NextResponse.next());
 });
 
 export const config = {
