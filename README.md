@@ -93,28 +93,78 @@ UI 言語は日本語のみ。マルチテナント化・シフト勤務・任�
 
 ```mermaid
 erDiagram
-  COMPANIES ||--o{ USERS : ""
-  COMPANIES ||--o{ WORK_RULE_VERSIONS : ""
-  USERS ||--o{ USERS : "manages"
-  USERS ||--o{ TIME_CLOCKS : ""
-  USERS ||--o{ DAILY_ATTENDANCES : ""
-  USERS ||--o{ CLOCK_CORRECTION_REQUESTS : "requests"
-  USERS ||--o{ LEAVE_REQUESTS : "requests"
-  USERS ||--o{ LEAVE_GRANTS : ""
-  USERS ||--o{ ATTENDANCE_CLOSINGS : ""
-  CLOCK_CORRECTION_REQUESTS ||--o{ APPROVAL_ACTIONS : ""
-  LEAVE_REQUESTS ||--o{ APPROVAL_ACTIONS : ""
+  COMPANIES ||--o{ USERS : has
+  COMPANIES ||--o{ WORK_RULE_VERSIONS : has
+  USERS ||--o{ USERS : manages
+  USERS ||--o{ TIME_CLOCKS : has
+  USERS ||--o{ DAILY_ATTENDANCES : has
+  USERS ||--o{ CLOCK_CORRECTION_REQUESTS : requests
+  USERS ||--o{ LEAVE_REQUESTS : requests
+  USERS ||--o{ LEAVE_GRANTS : has
+  USERS ||--o{ ATTENDANCE_CLOSINGS : has
+  CLOCK_CORRECTION_REQUESTS ||--o{ APPROVAL_ACTIONS : has
+  LEAVE_REQUESTS ||--o{ APPROVAL_ACTIONS : has
 
-  COMPANIES { uuid id PK; string name; string strategy; int closing_day }
-  USERS { uuid id PK; uuid company_id FK; string role; uuid manager_id FK }
-  WORK_RULE_VERSIONS { uuid id PK; uuid company_id FK; date valid_from; bool compliance_mode }
-  TIME_CLOCKS { uuid id PK; uuid user_id FK; string type; timestamp occurred_at }
-  DAILY_ATTENDANCES { uuid id PK; uuid user_id FK; date work_date; int ot_minutes }
-  CLOCK_CORRECTION_REQUESTS { uuid id PK; uuid requester_id FK; string status; json after_payload }
-  LEAVE_REQUESTS { uuid id PK; uuid requester_id FK; string status; int days }
-  APPROVAL_ACTIONS { uuid id PK; string request_type; uuid request_id; string action }
-  LEAVE_GRANTS { uuid id PK; uuid user_id FK; int granted_days; date expires_at }
-  ATTENDANCE_CLOSINGS { uuid id PK; uuid user_id FK; string year_month; json snapshot }
+  COMPANIES {
+    uuid id PK
+    string name
+    string strategy
+    int closing_day
+  }
+  USERS {
+    uuid id PK
+    uuid company_id FK
+    string role
+    uuid manager_id FK
+  }
+  WORK_RULE_VERSIONS {
+    uuid id PK
+    uuid company_id FK
+    date valid_from
+    bool compliance_mode
+  }
+  TIME_CLOCKS {
+    uuid id PK
+    uuid user_id FK
+    string type
+    timestamp occurred_at
+  }
+  DAILY_ATTENDANCES {
+    uuid id PK
+    uuid user_id FK
+    date work_date
+    int ot_minutes
+  }
+  CLOCK_CORRECTION_REQUESTS {
+    uuid id PK
+    uuid requester_id FK
+    string status
+    json after_payload
+  }
+  LEAVE_REQUESTS {
+    uuid id PK
+    uuid requester_id FK
+    string status
+    int days
+  }
+  APPROVAL_ACTIONS {
+    uuid id PK
+    string request_type
+    uuid request_id
+    string action
+  }
+  LEAVE_GRANTS {
+    uuid id PK
+    uuid user_id FK
+    int granted_days
+    date expires_at
+  }
+  ATTENDANCE_CLOSINGS {
+    uuid id PK
+    uuid user_id FK
+    string year_month
+    json snapshot
+  }
 ```
 
 `audit_logs (entity_type, entity_id, action, actor_id, before, after, created_at)` は全エンティティ横断のため ER 図には含めず、別建て。
