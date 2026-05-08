@@ -22,6 +22,7 @@ vi.mock('@/lib/db', () => ({
     $transaction: async <T,>(fn: (tx: unknown) => Promise<T>) => fn({}),
   },
   withTx: async <T,>(_db: unknown, fn: (tx: unknown) => Promise<T>) => fn({}),
+  withRetry: async <T,>(fn: () => Promise<T>) => fn(),
 }));
 
 vi.mock('@/auth', () => ({ auth: authMock }));

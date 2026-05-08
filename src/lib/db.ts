@@ -41,3 +41,12 @@ export async function withTx<T>(
   }
   return fn(db as Tx);
 }
+
+// retry ヘルパは prisma client 構築を伴わない別モジュールに分離している
+// (テストから DATABASE_URL 抜きで import できるようにするため)。
+export {
+  isRetryableDbError,
+  withRetry,
+  type RetryableErrorClassifier,
+  type WithRetryOptions,
+} from './db-retry';
