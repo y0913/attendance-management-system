@@ -41,26 +41,11 @@ vi.mock('@/lib/data/audit-logs', () => ({
   recordAuditLog: auditLogMock,
 }));
 
-vi.mock('next/cache', () => ({
-  revalidatePath: vi.fn(),
-}));
-
 import {
   setEmployeeDeactivationAction,
   upsertEmployeeAction,
 } from './actions';
-
-const adminUser = {
-  id: 'u_admin',
-  email: 'admin@example.com',
-  name: '管理 太郎',
-  role: 'admin',
-  managerId: null,
-  employmentType: 'monthly',
-  hiredAt: new Date('2018-04-01'),
-  baseSalary: 600000,
-  deactivatedAt: null,
-};
+import { adminUser } from '@/test/fixtures';
 
 const validInput = {
   name: '新人',

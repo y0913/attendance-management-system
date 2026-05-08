@@ -32,12 +32,19 @@ export type DbClient = PrismaClient | Tx;
 
 // 既にトランザクション内なら fn(tx) を実行、外なら新規 tx を開く。
 // 多段呼び出しでも savepoint 入れ子にならない。
+//
+// Prisma 7 の TransactionClient にも `$transaction` (savepoint 用) が存在するため、
+// 「`$transaction` を持つかどうか」では判別できない。PrismaClient のみが持つ
+// `$connect` で判定する: TransactionClient には `$connect` が無い。
+// (savepoint 入れ子は P2002 等の caught error 後に release 失敗するため有害。)
 export async function withTx<T>(
   db: DbClient,
   fn: (tx: Tx) => Promise<T>,
 ): Promise<T> {
-  if ('$transaction' in db && typeof db.$transaction === 'function') {
-    return db.$transaction(fn);
+  const isPrismaClient =
+    '$connect' in db && typeof (db as PrismaClient).$connect === 'function';
+  if (isPrismaClient) {
+    return (db as PrismaClient).$transaction(fn);
   }
   return fn(db as Tx);
 }

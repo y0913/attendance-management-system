@@ -45,21 +45,10 @@ vi.mock('@/lib/calc/holidays', () => ({
   isBusinessDay: holidaysMock.isBusinessDay,
 }));
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-
 import { submitLeaveAction } from './actions';
+import { generalUser } from '@/test/fixtures';
 
-const general = {
-  id: 'u_general',
-  email: 'general@example.com',
-  name: '一般 次郎',
-  role: 'general',
-  managerId: 'u_approver',
-  employmentType: 'monthly',
-  hiredAt: new Date('2023-10-01'),
-  baseSalary: 300000,
-  deactivatedAt: null,
-};
+const general = generalUser;
 
 const validFullInput = {
   dayUnit: 'full' as const,

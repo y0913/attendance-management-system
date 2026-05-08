@@ -46,26 +46,11 @@ vi.mock('@/lib/data/approval-actions', () => ({
   recordApprovalAction: recordMock,
 }));
 
-vi.mock('next/cache', () => ({
-  revalidatePath: vi.fn(),
-}));
-
 import { decideRequestAction } from './actions';
+import { adminUser, approverUser, generalUser } from '@/test/fixtures';
 
-const approver = {
-  id: 'u_approver',
-  email: 'approver@example.com',
-  name: '承認 花子',
-  role: 'approver',
-  managerId: null,
-  employmentType: 'monthly',
-  hiredAt: new Date('2020-04-01'),
-  baseSalary: 400000,
-  deactivatedAt: null,
-};
-
-const adminUser = { ...approver, id: 'u_admin', role: 'admin' };
-const general = { ...approver, id: 'u_general', role: 'general' };
+const approver = approverUser;
+const general = generalUser;
 
 const validInput = {
   type: 'correction' as const,

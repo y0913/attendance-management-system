@@ -41,27 +41,14 @@ vi.mock('@/lib/data/attendance-closings', () => closingsMock);
 
 vi.mock('@/lib/data/audit-logs', () => ({ recordAuditLog: auditLogMock }));
 
-vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
-
 import {
   bulkCloseMonthAction,
   closeMonthAction,
   uncloseAction,
 } from './actions';
+import { adminUser, generalUser } from '@/test/fixtures';
 
-const adminUser = {
-  id: 'u_admin',
-  email: 'admin@example.com',
-  name: '管理 太郎',
-  role: 'admin',
-  managerId: null,
-  employmentType: 'monthly',
-  hiredAt: new Date('2018-04-01'),
-  baseSalary: 600000,
-  deactivatedAt: null,
-};
-
-const general = { ...adminUser, id: 'u_general', role: 'general' };
+const general = generalUser;
 
 beforeEach(() => {
   vi.clearAllMocks();
