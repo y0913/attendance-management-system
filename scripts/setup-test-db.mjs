@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Integration テスト用 DB のセットアップ。
-// 1. ams_test データベースが無ければ作成 (docker exec 経由)
+// 1. ams_test データベースが無ければ作成 (docker-compose の場合は docker exec 経由)
 // 2. .env.test を読み込んで prisma migrate deploy
+//
+// CI (GitHub Actions の `services:` 等) で動かす場合は SKIP_DB_CREATE=1 を立てると
+// データベース作成 step を skip する (POSTGRES_DB で初期化済みの前提)。
 
 import { execSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -27,16 +30,20 @@ for (const line of envText.split('\n')) {
   if (m) envOverride[m[1]] = m[3];
 }
 
-console.log('→ Creating ams_test database (idempotent)...');
-try {
-  execSync(
-    `docker exec ams_postgres psql -U ams -d ams -tc "SELECT 1 FROM pg_database WHERE datname='ams_test'" | grep -q 1 || docker exec ams_postgres psql -U ams -d ams -c "CREATE DATABASE ams_test;"`,
-    { stdio: 'inherit', shell: '/bin/bash' },
-  );
-} catch (e) {
-  console.error('✗ Failed to create ams_test. Is docker-compose running?');
-  console.error(e.message);
-  process.exit(1);
+if (process.env.SKIP_DB_CREATE === '1') {
+  console.log('→ Skipping ams_test database creation (SKIP_DB_CREATE=1).');
+} else {
+  console.log('→ Creating ams_test database (idempotent)...');
+  try {
+    execSync(
+      `docker exec ams_postgres psql -U ams -d ams -tc "SELECT 1 FROM pg_database WHERE datname='ams_test'" | grep -q 1 || docker exec ams_postgres psql -U ams -d ams -c "CREATE DATABASE ams_test;"`,
+      { stdio: 'inherit', shell: '/bin/bash' },
+    );
+  } catch (e) {
+    console.error('✗ Failed to create ams_test. Is docker-compose running?');
+    console.error(e.message);
+    process.exit(1);
+  }
 }
 
 console.log('→ Running prisma migrate deploy on ams_test...');

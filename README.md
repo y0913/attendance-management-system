@@ -1,5 +1,7 @@
 # 勤怠管理システム
 
+[![CI](https://github.com/y0913/attendance-management-system/actions/workflows/ci.yml/badge.svg)](https://github.com/y0913/attendance-management-system/actions/workflows/ci.yml)
+
 > Next.js (App Router) + Server Actions + Prisma 構成における、業務系システムの設計パターン検証用プロジェクト。労働基準法に準拠した勤怠管理を題材に、effective-dated な履歴管理、pure function による計算ロジック分離、polymorphic-lite な承認ワークフロー、snapshot による整合性担保、ロールベース権限制御の二層構造を実装する。
 
 UI 言語は日本語のみ。マルチテナント化・シフト勤務・任意締め日などは scope out とし、業務ロジックの設計に集中する。
@@ -215,11 +217,33 @@ npm run dev
 | `npm run format:check` | Prettier チェック |
 | `npm run test` | Vitest 単体テスト |
 | `npm run test:coverage` | カバレッジ付きテスト |
-| `npm run e2e` | Playwright E2E |
-| `npm run e2e:ui` | Playwright UI モード |
+| `npm run db:test:setup` | Integration / E2E 用 test DB の作成 + マイグレーション |
+| `npm run test:integration` | Integration テスト（実 Postgres 使用） |
+| `npm run test:e2e` | Playwright E2E（dev server を別 port で起動、mailpit 経由でログイン） |
 | `npm run prisma:generate` | Prisma Client 生成 |
 | `npm run prisma:migrate` | マイグレーション実行（dev） |
 | `npm run prisma:studio` | Prisma Studio 起動 |
+
+---
+
+## CI
+
+`.github/workflows/ci.yml` で 3 種のテストスイートを並列実行する：
+
+| Job | 内容 | 依存 |
+|---|---|---|
+| `lint-and-unit` | ESLint / `tsc --noEmit` / Vitest 単体 (293 ケース) | なし |
+| `integration` | Postgres service 上で `prisma migrate deploy` → `vitest --config vitest.config.integration.ts` | `lint-and-unit` |
+| `e2e` | Postgres + mailpit service 上で Playwright（chromium）を実行。失敗時は `playwright-report/` を artifact 化 | `lint-and-unit` |
+
+**ローカルで integration / e2e を回すとき**
+
+1. `docker compose up -d` で Postgres と mailpit を起動
+2. `.env.test.example` をコピーして `.env.test` を作成
+3. `npm run db:test:setup` で `ams_test` DB を作成 + マイグレーション
+4. `npm run test:integration` または `npm run test:e2e`
+
+CI 環境では `services:` の Postgres が `POSTGRES_DB=ams_test` で初期化済みなので、`SKIP_DB_CREATE=1` を立てて DB 作成 step をスキップする運用にしている。
 
 ---
 

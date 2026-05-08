@@ -1,0 +1,193 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 同じブランチへの後続 push で進行中の CI を止める。
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  lint-and-unit:
+    name: Lint / Typecheck / Unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # postinstall で fetch-fonts.mjs (Google Fonts API) と prisma generate が走る。
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Unit tests
+        run: npm test
+
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: lint-and-unit
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ams
+          POSTGRES_PASSWORD: ams_dev
+          POSTGRES_DB: ams_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ams -d ams_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ams:ams_dev@localhost:5433/ams_test
+      DIRECT_URL: postgresql://ams:ams_dev@localhost:5433/ams_test
+      AUTH_SECRET: integration-test-secret-not-used-in-prod
+      AUTH_URL: http://localhost:3000
+      EMAIL_SERVER_HOST: localhost
+      EMAIL_SERVER_PORT: '1025'
+      EMAIL_FROM: test@example.com
+      EMAIL_INSECURE: 'true'
+      SKIP_DB_CREATE: '1'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # playwright.config / setup スクリプトが .env.test を dotenv で読むので
+      # 同じ値をファイルにも書き出しておく (env と二重化)。
+      - name: Write .env.test from job env
+        run: |
+          cat > .env.test <<EOF
+          DATABASE_URL="$DATABASE_URL"
+          DIRECT_URL="$DIRECT_URL"
+          AUTH_SECRET="$AUTH_SECRET"
+          AUTH_URL="$AUTH_URL"
+          EMAIL_SERVER_HOST="$EMAIL_SERVER_HOST"
+          EMAIL_SERVER_PORT="$EMAIL_SERVER_PORT"
+          EMAIL_FROM="$EMAIL_FROM"
+          EMAIL_INSECURE="$EMAIL_INSECURE"
+          EOF
+
+      - name: Apply migrations to test DB
+        run: npm run db:test:setup
+
+      - name: Integration tests
+        run: npm run test:integration
+
+  e2e:
+    name: E2E tests (Playwright + mailpit)
+    runs-on: ubuntu-latest
+    needs: lint-and-unit
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: ams
+          POSTGRES_PASSWORD: ams_dev
+          POSTGRES_DB: ams_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U ams -d ams_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
+
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+
+    env:
+      DATABASE_URL: postgresql://ams:ams_dev@localhost:5433/ams_test
+      DIRECT_URL: postgresql://ams:ams_dev@localhost:5433/ams_test
+      AUTH_SECRET: integration-test-secret-not-used-in-prod
+      AUTH_URL: http://localhost:3001
+      EMAIL_SERVER_HOST: localhost
+      EMAIL_SERVER_PORT: '1025'
+      EMAIL_FROM: test@example.com
+      EMAIL_INSECURE: 'true'
+      SKIP_DB_CREATE: '1'
+      CI: 'true'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # playwright.config が dotenv で .env.test を読み込むため、
+      # 確実に存在させる (job env 経由でも値は引けるが二重化で堅く)。
+      - name: Write .env.test from job env
+        run: |
+          cat > .env.test <<EOF
+          DATABASE_URL="$DATABASE_URL"
+          DIRECT_URL="$DIRECT_URL"
+          AUTH_SECRET="$AUTH_SECRET"
+          AUTH_URL="$AUTH_URL"
+          EMAIL_SERVER_HOST="$EMAIL_SERVER_HOST"
+          EMAIL_SERVER_PORT="$EMAIL_SERVER_PORT"
+          EMAIL_FROM="$EMAIL_FROM"
+          EMAIL_INSECURE="$EMAIL_INSECURE"
+          EOF
+
+      - name: Apply migrations to test DB
+        run: npm run db:test:setup
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Wait for mailpit
+        run: |
+          for i in {1..30}; do
+            curl -fsS http://localhost:8025/api/v1/messages > /dev/null && exit 0
+            sleep 1
+          done
+          echo "mailpit did not become ready"
+          exit 1
+
+      - name: E2E tests
+        run: npm run test:e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
