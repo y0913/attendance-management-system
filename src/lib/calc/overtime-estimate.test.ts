@@ -1,8 +1,18 @@
+import { toZonedTime } from 'date-fns-tz';
 import { describe, expect, it } from 'vitest';
+import { JST_TIMEZONE } from './constants';
 import {
   estimateMonthlyOvertime,
   OVERTIME_ALERT_THRESHOLD_MIN,
 } from './overtime-estimate';
+
+// system TZ に依存しない JST 曜日判定。Date.getDay() は local TZ で評価されるので、
+// CI (UTC) のような非 JST 環境では結果がずれる。
+const isJstWeekend = (jstDate: string): boolean => {
+  const d = new Date(`${jstDate}T00:00:00+09:00`);
+  const dow = toZonedTime(d, JST_TIMEZONE).getDay();
+  return dow === 0 || dow === 6;
+};
 
 describe('estimateMonthlyOvertime', () => {
   it('returns zero overtime when total work equals baseline (2026-06: no holidays)', () => {
@@ -10,9 +20,7 @@ describe('estimateMonthlyOvertime', () => {
     const daily = Array.from({ length: 30 }, (_, i) => {
       const day = String(i + 1).padStart(2, '0');
       const date = `2026-06-${day}`;
-      const d = new Date(`${date}T00:00:00+09:00`);
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      return { date, workMinutes: isWeekend ? null : 480 };
+      return { date, workMinutes: isJstWeekend(date) ? null : 480 };
     });
     const r = estimateMonthlyOvertime('2026-06', daily);
     expect(r.businessDaysInMonth).toBe(22);
@@ -26,9 +34,7 @@ describe('estimateMonthlyOvertime', () => {
     const daily = Array.from({ length: 30 }, (_, i) => {
       const day = String(i + 1).padStart(2, '0');
       const date = `2026-06-${day}`;
-      const d = new Date(`${date}T00:00:00+09:00`);
-      const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-      return { date, workMinutes: isWeekend ? null : 480 + 180 };
+      return { date, workMinutes: isJstWeekend(date) ? null : 480 + 180 };
     });
     const r = estimateMonthlyOvertime('2026-06', daily);
     expect(r.estimatedOtMinutes).toBe(22 * 180);

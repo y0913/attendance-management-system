@@ -13,6 +13,9 @@ concurrency:
 
 env:
   NODE_VERSION: '20'
+  # JST 固定: holiday_jp 等の system TZ 依存ライブラリと、JST ベースの業務ロジックを
+  # 整合させるための防御線 (一部 ライブラリは Date.getMonth() を直接使うため)。
+  TZ: Asia/Tokyo
 
 jobs:
   lint-and-unit:

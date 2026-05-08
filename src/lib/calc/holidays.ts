@@ -16,9 +16,10 @@ const isWeekendJst = (jstDate: string): boolean => {
 };
 
 export function isHoliday(jstDate: string): boolean {
-  // ライブラリは Date を受け取り JST 解釈する。yyyy-MM-dd 文字列を JST 0:00 の Date に変換。
-  const d = new Date(`${jstDate}T00:00:00+09:00`);
-  return holiday_jp.isHoliday(d);
+  // 注意: `holiday_jp.isHoliday(Date)` は date.getMonth() 等 system TZ ベースで
+  // 日付を抽出するため、非 JST 環境では誤判定する。文字列を渡せば内部で
+  // そのままキー一致で判定するので TZ 非依存。
+  return holiday_jp.isHoliday(jstDate);
 }
 
 export function isBusinessDay(jstDate: string): boolean {
@@ -45,10 +46,19 @@ export function listHolidaysBetween(
   startJstDate: string,
   endJstDate: string,
 ): HolidayInfo[] {
-  const start = new Date(`${startJstDate}T00:00:00+09:00`);
-  const end = new Date(`${endJstDate}T23:59:59+09:00`);
+  // holiday_jp.between(Date, Date) も内部で getFullYear() 等を呼ぶので、
+  // system local 解釈で「年/月/日」が startJst/endJst と一致するように Date を組む。
+  // new Date(y, m-1, d) は local TZ の年月日コンストラクタなので任意の system TZ で安全。
+  const start = jstYmdToLocalDate(startJstDate);
+  const end = jstYmdToLocalDate(endJstDate);
   return holiday_jp.between(start, end).map((h) => ({
     date: formatInTimeZone(h.date, JST_TIMEZONE, 'yyyy-MM-dd'),
     name: h.name,
   }));
 }
+
+const jstYmdToLocalDate = (jstDate: string): Date => {
+  const m = jstDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) throw new Error(`Invalid jstDate: ${jstDate}`);
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+};
