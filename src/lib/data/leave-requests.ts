@@ -72,6 +72,26 @@ export async function listLeaveRequests(
   return list.map(toMockLeave);
 }
 
+// 複数 user 分を 1 query で取得し、user ごとに group して返す。
+// admin/attendance のような super-batch 集計用。
+export async function listLeaveRequestsForUsers(
+  userIds: string[],
+): Promise<Map<string, MockLeaveRequest[]>> {
+  const byUser = new Map<string, MockLeaveRequest[]>();
+  if (userIds.length === 0) return byUser;
+  const list = await prisma.leaveRequest.findMany({
+    where: { requesterId: { in: userIds } },
+    orderBy: { submittedAt: 'desc' },
+  });
+  for (const r of list) {
+    const m = toMockLeave(r);
+    const arr = byUser.get(m.requesterId) ?? [];
+    arr.push(m);
+    byUser.set(m.requesterId, arr);
+  }
+  return byUser;
+}
+
 export async function findLeaveRequestById(
   id: string,
 ): Promise<MockLeaveRequest | null> {

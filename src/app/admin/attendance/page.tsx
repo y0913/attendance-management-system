@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
-import { getEffectiveMonthlySummary } from '@/lib/data/attendance-closings';
+import { getEffectiveMonthlySummariesForUsers } from '@/lib/data/attendance-closings';
 import {
   currentYearMonthJst,
   shiftYearMonth,
@@ -59,21 +59,6 @@ interface RowData {
   isClosed: boolean;
 }
 
-const summarizeUser = async (
-  user: MockUser,
-  ym: string,
-): Promise<RowData> => {
-  const summary = await getEffectiveMonthlySummary(user.id, ym);
-  return {
-    user,
-    workedDays: summary.workedDays,
-    totalWorkMin: summary.totalWorkMinutes,
-    totalBreakMin: summary.totalBreakMinutes,
-    missingClockOutDays: summary.missingClockOutDays,
-    isClosed: summary.isClosed,
-  };
-};
-
 export default async function AdminAttendancePage({
   searchParams,
 }: {
@@ -117,7 +102,24 @@ export default async function AdminAttendancePage({
     currentPage * PAGE_SIZE,
   );
 
-  const rows = await Promise.all(paged.map((u) => summarizeUser(u, ym)));
+  // ページ内 user 全員の月次サマリを 1 まとめで取得 (clocks / leaves を user × month で
+  // batch fetch する。N+1 回避)。締め済み user 分は snapshot を流用するので、クエリは
+  // 最大 3 (closings / clocks / leaves)。
+  const summaries = await getEffectiveMonthlySummariesForUsers(
+    paged.map((u) => u.id),
+    ym,
+  );
+  const rows: RowData[] = paged.map((user) => {
+    const s = summaries.get(user.id);
+    return {
+      user,
+      workedDays: s?.workedDays ?? 0,
+      totalWorkMin: s?.totalWorkMinutes ?? 0,
+      totalBreakMin: s?.totalBreakMinutes ?? 0,
+      missingClockOutDays: s?.missingClockOutDays ?? 0,
+      isClosed: s?.isClosed ?? false,
+    };
+  });
 
   const totalWorkAll = rows.reduce((sum, r) => sum + r.totalWorkMin, 0);
   const missingTotal = rows.reduce(

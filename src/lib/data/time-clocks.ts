@@ -32,6 +32,24 @@ const jstDayBoundsUtc = (jstDate: string): { start: Date; end: Date } => {
   return { start, end };
 };
 
+// JST 月境界 (yearMonth='2026-04' なら JST 2026-04-01 00:00 → 2026-05-01 00:00) を
+// UTC Date 範囲で返す。
+const jstMonthBoundsUtc = (
+  yearMonth: string,
+): { start: Date; end: Date } => {
+  const m = yearMonth.match(/^(\d{4})-(0[1-9]|1[0-2])$/);
+  if (!m) throw new Error(`Invalid yearMonth: ${yearMonth}`);
+  const year = Number(m[1]);
+  const month = Number(m[2]);
+  const nextYear = month === 12 ? year + 1 : year;
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const start = new Date(`${yearMonth}-01T00:00:00+09:00`);
+  const end = new Date(
+    `${nextYear}-${String(nextMonth).padStart(2, '0')}-01T00:00:00+09:00`,
+  );
+  return { start, end };
+};
+
 export async function listClocksFor(userId: string): Promise<MockTimeClock[]> {
   const list = await prisma.timeClock.findMany({
     where: { userId },
@@ -54,6 +72,48 @@ export async function listClocksForDate(
     orderBy: { occurredAt: 'asc' },
   });
   return list.map(toMockTimeClock);
+}
+
+// 月一括取得。jstDateKey でグルーピングする想定。
+// summarizeMonth が日次 30 query を 1 query に圧縮するために使う。
+export async function listClocksForMonth(
+  userId: string,
+  yearMonth: string,
+): Promise<MockTimeClock[]> {
+  const { start, end } = jstMonthBoundsUtc(yearMonth);
+  const list = await prisma.timeClock.findMany({
+    where: {
+      userId,
+      occurredAt: { gte: start, lt: end },
+    },
+    orderBy: { occurredAt: 'asc' },
+  });
+  return list.map(toMockTimeClock);
+}
+
+// 全 user × 月の super-batch 版。admin/attendance のような
+// 複数 user × 月集計を 1 query で済ませる。
+export async function listClocksForUsersMonth(
+  userIds: string[],
+  yearMonth: string,
+): Promise<Map<string, MockTimeClock[]>> {
+  const byUser = new Map<string, MockTimeClock[]>();
+  if (userIds.length === 0) return byUser;
+  const { start, end } = jstMonthBoundsUtc(yearMonth);
+  const list = await prisma.timeClock.findMany({
+    where: {
+      userId: { in: userIds },
+      occurredAt: { gte: start, lt: end },
+    },
+    orderBy: { occurredAt: 'asc' },
+  });
+  for (const t of list) {
+    const m = toMockTimeClock(t);
+    const arr = byUser.get(m.userId) ?? [];
+    arr.push(m);
+    byUser.set(m.userId, arr);
+  }
+  return byUser;
 }
 
 export async function appendClock(

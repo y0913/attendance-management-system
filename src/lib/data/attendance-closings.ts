@@ -8,10 +8,15 @@ import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { prisma, withTx, type DbClient } from '@/lib/db';
 import {
   summarizeMonth,
+  summarizeMonthForUsers,
   totalWorkMinutes,
   type DailySummary,
 } from './attendance-summary';
-import { listLeaveRequests } from './leave-requests';
+import {
+  listLeaveRequests,
+  listLeaveRequestsForUsers,
+  type MockLeaveRequest,
+} from './leave-requests';
 
 const fmtTime = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
 
@@ -74,11 +79,13 @@ const overlapsMonth = (
   return !(endDate < ymStart || startDate > ymEnd);
 };
 
-export async function buildClosingSnapshot(
-  userId: string,
+// pure: 集計済みの daily summaries と leaves から snapshot を作る。DB 非依存。
+// 単発呼び出し / batch 双方の合成基盤。
+function buildSnapshotFromParts(
   yearMonth: string,
-): Promise<ClosingSnapshot> {
-  const summaries = await summarizeMonth(userId, yearMonth);
+  summaries: DailySummary[],
+  leaves: MockLeaveRequest[],
+): ClosingSnapshot {
   const daily = summaries.map(dailyToEntry);
   const workedDays = summaries.filter((s) => s.workMinutes != null).length;
   const totalWork = totalWorkMinutes(summaries);
@@ -86,8 +93,7 @@ export async function buildClosingSnapshot(
   const missingClockOutDays = summaries.filter(
     (s) => s.clockIn && !s.clockOut,
   ).length;
-
-  const approvedLeaveDays = (await listLeaveRequests(userId))
+  const approvedLeaveDays = leaves
     .filter(
       (r) =>
         r.status === 'approved' &&
@@ -104,6 +110,36 @@ export async function buildClosingSnapshot(
     approvedLeaveDays,
     daily,
   };
+}
+
+export async function buildClosingSnapshot(
+  userId: string,
+  yearMonth: string,
+): Promise<ClosingSnapshot> {
+  const [summaries, leaves] = await Promise.all([
+    summarizeMonth(userId, yearMonth),
+    listLeaveRequests(userId),
+  ]);
+  return buildSnapshotFromParts(yearMonth, summaries, leaves);
+}
+
+// 複数 user の月次 ClosingSnapshot を batch で構築する (3 query: clocks / leaves / pure)。
+export async function buildClosingSnapshotsForUsers(
+  userIds: string[],
+  yearMonth: string,
+): Promise<Map<string, ClosingSnapshot>> {
+  const result = new Map<string, ClosingSnapshot>();
+  if (userIds.length === 0) return result;
+  const [byUserSummaries, byUserLeaves] = await Promise.all([
+    summarizeMonthForUsers(userIds, yearMonth),
+    listLeaveRequestsForUsers(userIds),
+  ]);
+  for (const userId of userIds) {
+    const summaries = byUserSummaries.get(userId) ?? [];
+    const leaves = byUserLeaves.get(userId) ?? [];
+    result.set(userId, buildSnapshotFromParts(yearMonth, summaries, leaves));
+  }
+  return result;
 }
 
 export async function findClosing(
@@ -217,4 +253,56 @@ export async function getEffectiveMonthlySummary(
     closedById: null,
     ...snapshot,
   };
+}
+
+// 複数 user の EffectiveMonthlySummary を batch で取得する。
+// 締め済み user は snapshot 利用、未締め user は clocks/leaves から構築。
+// 合計クエリ数: listClosingsForMonth (1) + summarizeMonthForUsers (1) + listLeaveRequestsForUsers (1)
+// = 最大 3 query (未締め user が居なければ未締め分は 0 query)。
+export async function getEffectiveMonthlySummariesForUsers(
+  userIds: string[],
+  yearMonth: string,
+): Promise<Map<string, EffectiveMonthlySummary>> {
+  const result = new Map<string, EffectiveMonthlySummary>();
+  if (userIds.length === 0) return result;
+
+  const closings = await listClosingsForMonth(yearMonth);
+  const closedById = new Map(closings.map((c) => [c.userId, c]));
+  const unclosedIds = userIds.filter((id) => !closedById.has(id));
+  const unclosedSnapshots =
+    unclosedIds.length > 0
+      ? await buildClosingSnapshotsForUsers(unclosedIds, yearMonth)
+      : new Map<string, ClosingSnapshot>();
+
+  for (const userId of userIds) {
+    const closing = closedById.get(userId);
+    if (closing) {
+      result.set(userId, {
+        isClosed: true,
+        closedAt: closing.closedAt,
+        closedById: closing.closedById,
+        ...closing.snapshot,
+      });
+    } else {
+      const snap =
+        unclosedSnapshots.get(userId) ??
+        // userId が users テーブルに居ない場合は空 snapshot で埋める。
+        ({
+          yearMonth,
+          workedDays: 0,
+          totalWorkMinutes: 0,
+          totalBreakMinutes: 0,
+          missingClockOutDays: 0,
+          approvedLeaveDays: 0,
+          daily: [],
+        } satisfies ClosingSnapshot);
+      result.set(userId, {
+        isClosed: false,
+        closedAt: null,
+        closedById: null,
+        ...snap,
+      });
+    }
+  }
+  return result;
 }
