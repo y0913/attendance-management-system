@@ -247,6 +247,25 @@ CI 環境では `services:` の Postgres が `POSTGRES_DB=ams_test` で初期化
 
 ---
 
+## 運用 / 監視
+
+### Vercel Cron + ヘルスチェック
+
+`vercel.json` で `/api/cron/health` を 1 日 1 回呼ぶ cron を定義済み。役割：
+
+- Supabase Free の自動 pause（7 日アクセスなしで停止）を防止
+- DB 疎通監視：失敗時は `logActionError` 経由で Sentry にも送信される
+
+`CRON_SECRET` を Vercel の Environment Variables に登録すれば、Vercel Cron が `Authorization: Bearer $CRON_SECRET` を自動付与する。コード側はこの値と一致しないリクエストを 401 で弾く。
+
+### Sentry（任意）
+
+`@sentry/node` で server 側エラーを集約。`SENTRY_DSN` を環境変数に設定すると、`logActionError` 経由のすべてのエラーが Sentry に送信される（`action` を tag、`userId` を user.id、`extra` を context として付与）。
+
+未設定だと初期化も送信もスキップされる（dev / portfolio 自宅運用での余計な送信を防ぐ）。
+
+---
+
 ## ディレクトリ構造
 
 ```

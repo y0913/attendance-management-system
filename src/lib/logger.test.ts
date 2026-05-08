@@ -3,6 +3,12 @@
 // pino 自体の挙動はライブラリ側のテストに任せる。
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const captureExceptionMock = vi.hoisted(() => vi.fn());
+vi.mock('./sentry', () => ({
+  captureException: captureExceptionMock,
+}));
+
 import { logActionError, logger } from './logger';
 
 describe('logActionError', () => {
@@ -53,6 +59,25 @@ describe('logActionError', () => {
       userId: 'u_approver',
       type: 'leave',
       requestId: 'lv_1',
+    });
+  });
+
+  it('Sentry の captureException も同じ context で呼ばれる', () => {
+    vi.spyOn(logger, 'error').mockImplementation(() => {});
+    captureExceptionMock.mockClear();
+    const err = new Error('boom');
+
+    logActionError({
+      action: 'closeMonthAction',
+      userId: 'u_admin',
+      err,
+      extra: { yearMonth: '2026-04' },
+    });
+
+    expect(captureExceptionMock).toHaveBeenCalledWith(err, {
+      action: 'closeMonthAction',
+      userId: 'u_admin',
+      extra: { yearMonth: '2026-04' },
     });
   });
 });

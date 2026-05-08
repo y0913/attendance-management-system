@@ -7,6 +7,7 @@
 // 「想定外例外を INTERNAL fallback と一緒にログする」ケースは logActionError を使う。
 
 import pino from 'pino';
+import { captureException } from './sentry';
 
 const isProd = process.env.NODE_ENV === 'production';
 const isTest = process.env.NODE_ENV === 'test' || process.env.LOG_LEVEL === 'silent';
@@ -37,6 +38,8 @@ export interface ActionErrorContext {
 
 // Server Action の catch 句から呼ぶ標準ロガー。
 // 出力例: {"level":50,"time":...,"action":"closeMonthAction","userId":"u_admin","err":{"type":"Error",...},"msg":"closeMonthAction failed"}
+//
+// SENTRY_DSN が設定されているときは Sentry にも自動転送する (action / userId / extra を tag/user/extra として付ける)。
 export function logActionError({
   action,
   userId,
@@ -52,4 +55,9 @@ export function logActionError({
     },
     `${action} failed`,
   );
+  captureException(err, {
+    action,
+    userId: userId ?? undefined,
+    extra,
+  });
 }
