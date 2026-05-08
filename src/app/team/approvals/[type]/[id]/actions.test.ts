@@ -255,10 +255,8 @@ describe('decideRequestAction (success path)', () => {
 describe('decideRequestAction (internal error)', () => {
   it('returns INTERNAL when data layer throws unexpectedly', async () => {
     decideMock.decideCorrection.mockRejectedValueOnce(new Error('boom'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await decideRequestAction(validInput);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('INTERNAL');
-    errSpy.mockRestore();
   });
 });

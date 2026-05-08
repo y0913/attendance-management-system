@@ -114,10 +114,8 @@ describe('punchClockAction (internal error)', () => {
   it('returns INTERNAL when appendClock throws', async () => {
     clocksMock.getClockState.mockResolvedValueOnce('not_clocked_in');
     clocksMock.appendClock.mockRejectedValueOnce(new Error('db down'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await punchClockAction({ type: 'clock_in' });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('INTERNAL');
-    errSpy.mockRestore();
   });
 });

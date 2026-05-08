@@ -6,6 +6,7 @@ import type { ActionResult } from '@/lib/action-result';
 import { requireApprover } from '@/lib/auth/guards';
 import { isAdmin } from '@/lib/auth/policies';
 import { prisma } from '@/lib/db';
+import { logActionError } from '@/lib/logger';
 import {
   APPROVAL_COMMENT_MAX_LENGTH,
   recordApprovalAction,
@@ -113,7 +114,16 @@ export async function decideRequestAction(input: {
 
     return { ok: true, data: { id: parsed.data.id } };
   } catch (e) {
-    console.error('decideRequestAction failed', e);
+    logActionError({
+      action: 'decideRequestAction',
+      userId: session.id,
+      err: e,
+      extra: {
+        type: parsed.data.type,
+        requestId: parsed.data.id,
+        decision: parsed.data.decision,
+      },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

@@ -179,14 +179,12 @@ describe('closeMonthAction (success / conflict)', () => {
 describe('closeMonthAction (internal error)', () => {
   it('returns INTERNAL when closeMonth throws', async () => {
     closingsMock.closeMonth.mockRejectedValueOnce(new Error('db down'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await closeMonthAction({
       userId: 'u_general',
       yearMonth: '2026-04',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('INTERNAL');
-    errSpy.mockRestore();
   });
 });
 

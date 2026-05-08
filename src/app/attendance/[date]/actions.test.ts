@@ -215,11 +215,9 @@ describe('submitCorrectionAction (success)', () => {
 describe('submitCorrectionAction (internal error)', () => {
   it('returns INTERNAL on unexpected throw', async () => {
     correctionsMock.submitCorrection.mockRejectedValueOnce(new Error('boom'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await submitCorrectionAction(validCorrectionInput);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('INTERNAL');
-    errSpy.mockRestore();
   });
 });
 

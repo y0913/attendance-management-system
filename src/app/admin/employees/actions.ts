@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { requireAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
+import { logActionError } from '@/lib/logger';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import {
   createMockUser,
@@ -171,7 +172,12 @@ export async function upsertEmployeeAction(
     revalidatePath('/admin/audit-logs');
     return { ok: true, data: { id: created.id } };
   } catch (e) {
-    console.error('upsertEmployeeAction failed', e);
+    logActionError({
+      action: 'upsertEmployeeAction',
+      userId: session.id,
+      err: e,
+      extra: { targetUserId: input.id ?? null, email: input.email },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }
@@ -230,7 +236,12 @@ export async function setEmployeeDeactivationAction(input: {
     revalidatePath('/admin/audit-logs');
     return { ok: true, data: { id: parsed.data.id } };
   } catch (e) {
-    console.error('setEmployeeDeactivationAction failed', e);
+    logActionError({
+      action: 'setEmployeeDeactivationAction',
+      userId: session.id,
+      err: e,
+      extra: { targetUserId: parsed.data.id, deactivate: parsed.data.deactivate },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

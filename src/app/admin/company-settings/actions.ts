@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { requireAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
+import { logActionError } from '@/lib/logger';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import { getCompany, updateCompany } from '@/lib/data/companies';
 
@@ -78,7 +79,11 @@ export async function updateCompanySettingsAction(input: {
 
     return { ok: true, data: undefined };
   } catch (e) {
-    console.error('updateCompanySettingsAction failed', e);
+    logActionError({
+      action: 'updateCompanySettingsAction',
+      userId: session.id,
+      err: e,
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

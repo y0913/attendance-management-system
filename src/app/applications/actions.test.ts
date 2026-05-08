@@ -188,13 +188,11 @@ describe('withdrawRequestAction (success)', () => {
 describe('withdrawRequestAction (internal error)', () => {
   it('returns INTERNAL when data layer throws', async () => {
     withdrawMock.withdrawCorrection.mockRejectedValueOnce(new Error('boom'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await withdrawRequestAction({
       type: 'correction',
       id: 'ccr_001',
     });
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('INTERNAL');
-    errSpy.mockRestore();
   });
 });

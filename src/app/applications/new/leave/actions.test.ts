@@ -194,10 +194,8 @@ describe('submitLeaveAction (success)', () => {
 describe('submitLeaveAction (internal error)', () => {
   it('returns INTERNAL when submitLeave throws', async () => {
     leaveMock.submitLeave.mockRejectedValueOnce(new Error('boom'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await submitLeaveAction(validFullInput);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('INTERNAL');
-    errSpy.mockRestore();
   });
 });

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { requireSession } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
+import { logActionError } from '@/lib/logger';
 import {
   captureCurrentSnapshot,
   findActiveCorrection,
@@ -43,7 +44,12 @@ export async function saveDailyNoteAction(
 
     return { ok: true, data: { jstDate: parsed.data.jstDate } };
   } catch (e) {
-    console.error('saveDailyNoteAction failed', e);
+    logActionError({
+      action: 'saveDailyNoteAction',
+      userId: session.id,
+      err: e,
+      extra: { jstDate: parsed.data.jstDate },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }
@@ -130,7 +136,12 @@ export async function submitCorrectionAction(input: {
 
     return { ok: true, data: { id: result.req.id } };
   } catch (e) {
-    console.error('submitCorrectionAction failed', e);
+    logActionError({
+      action: 'submitCorrectionAction',
+      userId: session.id,
+      err: e,
+      extra: { jstDate: parsed.data.jstDate },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

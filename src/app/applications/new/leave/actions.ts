@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { requireSession } from '@/lib/auth/guards';
 import { isBusinessDay } from '@/lib/calc/holidays';
+import { logActionError } from '@/lib/logger';
 import {
   countBusinessDaysBetween,
   LEAVE_REASON_MAX_LENGTH,
@@ -92,7 +93,11 @@ export async function submitLeaveAction(input: {
 
     return { ok: true, data: { id: result.request.id } };
   } catch (e) {
-    console.error('submitLeaveAction failed', e);
+    logActionError({
+      action: 'submitLeaveAction',
+      userId: session.id,
+      err: e,
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

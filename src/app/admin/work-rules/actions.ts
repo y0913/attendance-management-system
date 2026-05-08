@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { requireAdmin } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
+import { logActionError } from '@/lib/logger';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import {
   checkComplianceViolations,
@@ -178,7 +179,12 @@ export async function upsertWorkRuleAction(
     revalidatePath('/admin/audit-logs');
     return { ok: true, data: { id: result.id } };
   } catch (e) {
-    console.error('upsertWorkRuleAction failed', e);
+    logActionError({
+      action: 'upsertWorkRuleAction',
+      userId: session.id,
+      err: e,
+      extra: { ruleId: data.id ?? null, validFrom: data.validFrom },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }
@@ -222,7 +228,12 @@ export async function deleteWorkRuleAction(input: {
     revalidatePath('/admin/audit-logs');
     return { ok: true, data: undefined };
   } catch (e) {
-    console.error('deleteWorkRuleAction failed', e);
+    logActionError({
+      action: 'deleteWorkRuleAction',
+      userId: session.id,
+      err: e,
+      extra: { ruleId: input.id },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

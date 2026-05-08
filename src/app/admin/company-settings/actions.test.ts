@@ -177,10 +177,8 @@ describe('updateCompanySettingsAction (success)', () => {
 describe('updateCompanySettingsAction (internal error)', () => {
   it('returns INTERNAL when updateCompany throws', async () => {
     companiesMock.updateCompany.mockRejectedValueOnce(new Error('db down'));
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const result = await updateCompanySettingsAction(validInput);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error.code).toBe('INTERNAL');
-    errSpy.mockRestore();
   });
 });

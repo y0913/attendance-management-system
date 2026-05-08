@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { TimeClockType } from '@prisma/client';
 import type { ActionResult } from '@/lib/action-result';
 import { requireSession } from '@/lib/auth/guards';
+import { logActionError } from '@/lib/logger';
 import {
   appendClock,
   getClockState,
@@ -54,7 +55,7 @@ export async function punchClockAction(
 
     return { ok: true, data: { type: parsed.data.type } };
   } catch (e) {
-    console.error('punchClockAction failed', e);
+    logActionError({ action: 'punchClockAction', userId: session.id, err: e });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

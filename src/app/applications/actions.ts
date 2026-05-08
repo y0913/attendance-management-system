@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { requireSession } from '@/lib/auth/guards';
 import { prisma } from '@/lib/db';
+import { logActionError } from '@/lib/logger';
 import { recordApprovalAction } from '@/lib/data/approval-actions';
 import { withdrawCorrection } from '@/lib/data/clock-corrections';
 import { withdrawLeave } from '@/lib/data/leave-requests';
@@ -82,7 +83,12 @@ export async function withdrawRequestAction(input: {
 
     return { ok: true, data: { id: parsed.data.id } };
   } catch (e) {
-    console.error('withdrawRequestAction failed', e);
+    logActionError({
+      action: 'withdrawRequestAction',
+      userId: session.id,
+      err: e,
+      extra: { type: parsed.data.type, id: parsed.data.id },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }

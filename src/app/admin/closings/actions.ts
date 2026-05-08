@@ -5,6 +5,7 @@ import { z } from 'zod';
 import type { ActionResult } from '@/lib/action-result';
 import { requireAdmin } from '@/lib/auth/guards';
 import { prisma, withRetry } from '@/lib/db';
+import { logActionError } from '@/lib/logger';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import {
   closeMonth,
@@ -84,7 +85,12 @@ export async function closeMonthAction(input: {
     revalidatePath('/admin/audit-logs');
     return { ok: true, data: { closingId: closing.id } };
   } catch (e) {
-    console.error('closeMonthAction failed', e);
+    logActionError({
+      action: 'closeMonthAction',
+      userId: session.id,
+      err: e,
+      extra: { targetUserId: parsed.data.userId, yearMonth: parsed.data.yearMonth },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }
@@ -147,7 +153,12 @@ export async function bulkCloseMonthAction(input: {
     revalidatePath('/admin/audit-logs');
     return { ok: true, data: { closedCount, skippedCount } };
   } catch (e) {
-    console.error('bulkCloseMonthAction failed', e);
+    logActionError({
+      action: 'bulkCloseMonthAction',
+      userId: session.id,
+      err: e,
+      extra: { yearMonth: parsed.data.yearMonth },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }
@@ -207,7 +218,12 @@ export async function uncloseAction(input: {
     revalidatePath('/admin/attendance');
     return { ok: true, data: undefined };
   } catch (e) {
-    console.error('uncloseAction failed', e);
+    logActionError({
+      action: 'uncloseAction',
+      userId: session.id,
+      err: e,
+      extra: { closingId: parsed.data.closingId },
+    });
     return { ok: false, error: { code: 'INTERNAL' } };
   }
 }
