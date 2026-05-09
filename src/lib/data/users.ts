@@ -69,6 +69,14 @@ export async function listActiveUsers(): Promise<MockUser[]> {
   return users.map(toMockUser);
 }
 
+export async function findMockUsersByIds(ids: string[]): Promise<MockUser[]> {
+  if (ids.length === 0) return [];
+  const users = await prisma.user.findMany({
+    where: { id: { in: ids } },
+  });
+  return users.map(toMockUser);
+}
+
 export async function listAllUsers(): Promise<MockUser[]> {
   const users = await prisma.user.findMany();
   return users.map(toMockUser);

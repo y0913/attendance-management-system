@@ -1,8 +1,8 @@
 import type { NextRequest } from 'next/server';
-import { getEffectiveMonthlySummary } from '@/lib/data/attendance-closings';
+import { getEffectiveMonthlySummariesForUsers } from '@/lib/data/attendance-closings';
 import { currentYearMonthJst } from '@/lib/data/attendance-summary';
 import { getCompany } from '@/lib/data/companies';
-import { computeMonthlyPayroll } from '@/lib/data/payroll-bridge';
+import { computeMonthlyPayrollForUsers } from '@/lib/data/payroll-bridge';
 import { getMockSession } from '@/lib/data/session';
 import { listActiveUsers } from '@/lib/data/users';
 import { csvResponse, rowsToCsv } from '@/lib/util/csv';
@@ -79,11 +79,16 @@ export async function GET(request: NextRequest): Promise<Response> {
     '法定休日×深夜割増',
     '総額',
   ];
-  const body: unknown[][] = await Promise.all(
-    users.map(async (u): Promise<unknown[]> => {
-      const baseSummary = await getEffectiveMonthlySummary(u.id, ym);
-      const payroll = await computeMonthlyPayroll(u.id, ym);
-      const manager = u.managerId ? userById.get(u.managerId) ?? null : null;
+  const userIds = users.map((u) => u.id);
+  const [baseSummaries, payrolls] = await Promise.all([
+    getEffectiveMonthlySummariesForUsers(userIds, ym),
+    computeMonthlyPayrollForUsers(userIds, ym),
+  ]);
+
+  const body: unknown[][] = users.map((u): unknown[] => {
+    const baseSummary = baseSummaries.get(u.id)!;
+    const payroll = payrolls.get(u.id)!;
+    const manager = u.managerId ? userById.get(u.managerId) ?? null : null;
     const s = payroll.summary;
     const p = payroll.premium;
     return [
@@ -120,8 +125,7 @@ export async function GET(request: NextRequest): Promise<Response> {
       p ? fmtYen(p.legalHolidayNightPay) : '',
       p ? fmtYen(p.total) : '',
     ];
-    }),
-  );
+  });
 
   const meta: unknown[][] = [
     ['会社', company.name],

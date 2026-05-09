@@ -126,7 +126,7 @@ export async function summarizeMonthForUsers(
 }
 
 // pure: clocks を JST 日付キーで group する。
-function groupByJstDateKey(
+export function groupByJstDateKey(
   clocks: MockTimeClock[],
 ): Map<string, MockTimeClock[]> {
   const byKey = new Map<string, MockTimeClock[]>();
