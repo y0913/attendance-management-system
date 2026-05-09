@@ -1,0 +1,39 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "words": [
+    "Supabase",
+    "Mailpit",
+    "mailpit",
+    "Resend",
+    "Vercel",
+    "Prisma",
+    "Postgres",
+    "pgbouncer",
+    "NextAuth",
+    "Nodemailer",
+    "Holiday",
+    "JST",
+    "snapshot",
+    "savepoint",
+    "TOCTOU",
+    "pino",
+    "Sentry",
+    "captureException",
+    "withRetry",
+    "withTx",
+    "shadcn",
+    "Tailwind",
+    "Vitest",
+    "Playwright",
+    "memoize"
+  ],
+  "ignorePaths": [
+    "node_modules",
+    "dist",
+    ".next",
+    "coverage",
+    "playwright-report",
+    "package-lock.json"
+  ]
+}
