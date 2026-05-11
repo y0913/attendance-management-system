@@ -3,6 +3,7 @@
 
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import NextAuth from 'next-auth';
+import Credentials from 'next-auth/providers/credentials';
 import Nodemailer, {
   type NodemailerConfig,
 } from 'next-auth/providers/nodemailer';
@@ -10,6 +11,16 @@ import { createTransport } from 'nodemailer';
 import authConfig from '@/auth.config';
 import { checkMagicLinkRateLimit } from '@/lib/auth/rate-limit';
 import { prisma } from '@/lib/db';
+
+// portfolio デモ用: DEMO_LOGIN_ENABLED=true のときだけ Credentials provider を有効化。
+// 訪問者は magic link 経由せず seed の admin/approver/general アカウントで即時ログインできる。
+// 本番では他人にメールが届かない Resend Free 制約への現実的な回避策。
+const DEMO_LOGIN_ENABLED = process.env.DEMO_LOGIN_ENABLED === 'true';
+const DEMO_EMAIL_BY_ROLE: Record<string, string> = {
+  admin: 'admin@example.com',
+  approver: 'approver@example.com',
+  general: 'general@example.com',
+};
 
 // 本番で平文 SMTP 設定が残っていたら起動時に fail fast。
 if (
@@ -149,6 +160,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       maxAge: TOKEN_TTL_SECONDS,
       sendVerificationRequest,
     }),
+    // portfolio デモ用 Credentials provider。env で明示的に有効化されてる時だけ追加。
+    // 認証は「role 名と seed メアドの対応表」だけで、パスワードや署名は一切要求しない。
+    // → 本番にうっかり残っていても、メール認証側の signIn callback で deactivated チェックがあるため
+    //   悪用範囲は seed 3 ユーザー（admin/approver/general）に限定される。
+    ...(DEMO_LOGIN_ENABLED
+      ? [
+          Credentials({
+            id: 'demo',
+            name: 'Demo',
+            credentials: { role: { type: 'text' } },
+            async authorize(credentials) {
+              const role =
+                typeof credentials?.role === 'string' ? credentials.role : null;
+              if (!role || !DEMO_EMAIL_BY_ROLE[role]) return null;
+              const email = DEMO_EMAIL_BY_ROLE[role];
+              const u = await prisma.user.findUnique({ where: { email } });
+              if (!u || u.deactivatedAt) return null;
+              return { id: u.id, email: u.email, name: u.name };
+            },
+          }),
+        ]
+      : []),
   ],
   callbacks: {
     ...authConfig.callbacks,

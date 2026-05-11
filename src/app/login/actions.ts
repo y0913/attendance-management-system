@@ -47,3 +47,17 @@ export async function signInAction(
 export async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: '/login' });
 }
+
+// portfolio デモログイン。Credentials provider 経由で seed の admin/approver/general に即時 sign-in。
+// DEMO_LOGIN_ENABLED が無いと provider 自体が登録されていないので signIn が失敗する。
+export async function demoLoginAction(formData: FormData): Promise<void> {
+  if (process.env.DEMO_LOGIN_ENABLED !== 'true') {
+    throw new Error('Demo login is not enabled');
+  }
+  const role = formData.get('role');
+  if (role !== 'admin' && role !== 'approver' && role !== 'general') {
+    throw new Error('Invalid demo role');
+  }
+  const redirectTo = role === 'admin' ? '/admin/dashboard' : '/clock';
+  await signIn('demo', { role, redirectTo });
+}

@@ -15,6 +15,13 @@ export default async function Home() {
   if (session) {
     redirect(session.role === 'admin' ? '/admin/dashboard' : '/clock');
   }
+  // demo モードは Resend Free の他人宛送信制約を回避するための「触って動く portfolio」用設定。
+  const demoEnabled = process.env.DEMO_LOGIN_ENABLED === 'true';
+  const primaryHref = demoEnabled ? '/login' : '/signup';
+  const primaryLabel = demoEnabled
+    ? 'デモアカウントで試す'
+    : '無料で会社を登録する';
+  const secondaryLabel = demoEnabled ? 'ログイン画面へ' : '既にお持ちの方';
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,9 +33,11 @@ export default async function Home() {
             <Button asChild variant="ghost" size="sm">
               <Link href="/login">ログイン</Link>
             </Button>
-            <Button asChild size="sm">
-              <Link href="/signup">無料で始める</Link>
-            </Button>
+            {!demoEnabled && (
+              <Button asChild size="sm">
+                <Link href="/signup">無料で始める</Link>
+              </Button>
+            )}
           </div>
         </div>
       </header>
@@ -56,7 +65,7 @@ export default async function Home() {
                 size="lg"
                 className="h-12 bg-white px-8 text-base font-semibold text-slate-900 hover:bg-slate-800 hover:text-white"
               >
-                <Link href="/signup">無料で会社を登録する</Link>
+                <Link href={primaryHref}>{primaryLabel}</Link>
               </Button>
               <Button
                 asChild
@@ -64,11 +73,13 @@ export default async function Home() {
                 size="lg"
                 className="h-12 border-slate-600 bg-transparent px-8 text-base text-white hover:bg-slate-800 hover:text-white"
               >
-                <Link href="/login">既にお持ちの方</Link>
+                <Link href="/login">{secondaryLabel}</Link>
               </Button>
             </div>
             <p className="mt-6 text-sm text-slate-400">
-              クレジットカード登録不要 / パスワード設定不要（magic link 認証）
+              {demoEnabled
+                ? '※ portfolio デモのため、デモアカウントから即時ログインで動作確認できます'
+                : 'クレジットカード登録不要 / パスワード設定不要（magic link 認証）'}
             </p>
           </div>
         </div>
@@ -260,10 +271,12 @@ export default async function Home() {
       <section className="bg-slate-900 text-white">
         <div className="mx-auto max-w-3xl px-6 py-24 text-center">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            今すぐ無料で始める
+            {demoEnabled ? '今すぐ動作を体験する' : '今すぐ無料で始める'}
           </h2>
           <p className="mt-4 text-slate-300">
-            メールアドレスだけで登録完了。会社を作成して管理者としてログインできます。
+            {demoEnabled
+              ? '管理者 / 承認者 / 一般社員の 3 ロールを、ログイン画面のデモアカウントから即時に切り替えられます。'
+              : 'メールアドレスだけで登録完了。会社を作成して管理者としてログインできます。'}
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Button
@@ -271,7 +284,7 @@ export default async function Home() {
               size="lg"
               className="h-12 bg-white px-8 text-base font-semibold text-slate-900 hover:bg-slate-800 hover:text-white"
             >
-              <Link href="/signup">無料で会社を登録する</Link>
+              <Link href={primaryHref}>{primaryLabel}</Link>
             </Button>
             <Button
               asChild
