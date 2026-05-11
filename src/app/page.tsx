@@ -62,7 +62,7 @@ export default async function Home() {
                 asChild
                 variant="outline"
                 size="lg"
-                className="h-12 border-slate-600 bg-transparent px-8 text-base text-white hover:bg-slate-800"
+                className="h-12 border-slate-600 bg-transparent px-8 text-base text-white hover:bg-slate-800 hover:text-white"
               >
                 <Link href="/login">既にお持ちの方</Link>
               </Button>
@@ -277,7 +277,7 @@ export default async function Home() {
               asChild
               size="lg"
               variant="outline"
-              className="h-12 border-slate-600 bg-transparent px-8 text-base text-white hover:bg-slate-800"
+              className="h-12 border-slate-600 bg-transparent px-8 text-base text-white hover:bg-slate-800 hover:text-white"
             >
               <Link href="/login">ログイン</Link>
             </Button>
