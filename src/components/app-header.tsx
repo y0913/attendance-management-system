@@ -120,13 +120,17 @@ export function AppHeader({
         ]
       : [];
   const items = [...PERSONAL_NAV, ...teamNav, ...adminNav];
+  const homeHref = user.role === 'admin' ? '/admin/dashboard' : '/clock';
 
   return (
     <header className="border-b bg-background">
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
-        <p className="text-base font-bold tracking-tight whitespace-nowrap">
+        <Link
+          href={homeHref}
+          className="text-base font-bold tracking-tight whitespace-nowrap hover:opacity-80"
+        >
           勤怠管理システム
-        </p>
+        </Link>
 
         <nav className="flex flex-1 flex-wrap items-center gap-1 text-sm">
           {items.map((item) => {
