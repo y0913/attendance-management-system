@@ -15,6 +15,8 @@ import {
   setUserDeactivation,
   updateMockUser,
 } from '@/lib/data/users';
+import { getCompany } from '@/lib/data/companies';
+import { sendInvitationEmail } from '@/lib/auth/invitation';
 
 const RoleEnum = z.enum(['admin', 'approver', 'general']);
 const EmploymentEnum = z.enum(['monthly', 'hourly']);
@@ -176,6 +178,26 @@ export async function upsertEmployeeAction(
       );
       return user;
     });
+
+    // 招待メール送信。失敗してもユーザー作成は成功扱い（admin が後で再送できる）。
+    try {
+      const company = await getCompany(session.companyId);
+      await sendInvitationEmail({
+        email: created.email,
+        name: created.name,
+        role: created.role,
+        inviterName: session.name,
+        companyName: company.name,
+      });
+    } catch (e) {
+      logActionError({
+        action: 'sendInvitationEmail',
+        userId: session.id,
+        err: e,
+        extra: { targetUserId: created.id, targetEmail: created.email },
+      });
+    }
+
     revalidatePath('/admin/employees');
     revalidatePath('/admin/audit-logs');
     return { ok: true, data: { id: created.id } };
