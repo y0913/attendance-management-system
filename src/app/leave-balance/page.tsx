@@ -1,4 +1,5 @@
 import { formatInTimeZone } from 'date-fns-tz';
+import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
   Card,
@@ -6,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
 import { getUserLeaveBalance } from '@/lib/data/leave-grants';
@@ -41,6 +43,13 @@ export default async function LeaveBalancePage() {
       />
 
       <main className="mx-auto flex max-w-5xl flex-col gap-6 px-6 py-10">
+        <div className="flex items-center justify-between gap-4">
+          <h1 className="text-xl font-semibold">有給</h1>
+          <Button asChild size="sm">
+            <Link href="/applications/new/leave">+ 有給を申請</Link>
+          </Button>
+        </div>
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader className="pb-2">
