@@ -7,14 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { listAllUsers } from '@/lib/data/users';
 import { LoginForm } from './login-form';
-
-const ROLE_LABEL: Record<string, string> = {
-  admin: '管理者',
-  approver: '承認者',
-  general: '一般',
-};
 
 export default async function LoginPage({
   searchParams,
@@ -24,7 +17,6 @@ export default async function LoginPage({
   const sp = await searchParams;
   const isVerify = sp.verify === '1';
   const errorCode = sp.error;
-  const users = await listAllUsers();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-muted px-4">
@@ -65,21 +57,6 @@ export default async function LoginPage({
               <LoginForm />
             </>
           )}
-          <div className="rounded-md border bg-muted/50 p-4 text-sm">
-            <p className="mb-2 font-medium">登録済みユーザー</p>
-            <ul className="space-y-1 text-muted-foreground">
-              {users.map((u) => (
-                <li key={u.id} className="flex items-center justify-between">
-                  <span>{u.email}</span>
-                  <span className="text-xs">{ROLE_LABEL[u.role]}</span>
-                </li>
-              ))}
-            </ul>
-            <p className="mt-2 text-xs text-muted-foreground">
-              admin が `/admin/employees`
-              から招待した社員、または新規登録したユーザーのみログイン可能です。
-            </p>
-          </div>
         </CardContent>
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
