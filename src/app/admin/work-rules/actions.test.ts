@@ -282,6 +282,7 @@ describe('deleteWorkRuleAction', () => {
     const result = await deleteWorkRuleAction({ id: 'wrv_future' });
     expect(result.ok).toBe(true);
     expect(rulesMock.deleteWorkRuleVersion).toHaveBeenCalledWith(
+      'co_default',
       'wrv_future',
       expect.anything(),
     );

@@ -133,6 +133,7 @@ describe('updateCompanySettingsAction (success)', () => {
     const result = await updateCompanySettingsAction(validInput);
     expect(result.ok).toBe(true);
     expect(companiesMock.updateCompany).toHaveBeenCalledWith(
+      'co_default',
       expect.objectContaining({
         name: '更新後の社名', // trim 適用後
         closingDay: 25,
@@ -156,6 +157,7 @@ describe('updateCompanySettingsAction (success)', () => {
       name: '  社名  ',
     });
     expect(companiesMock.updateCompany).toHaveBeenCalledWith(
+      'co_default',
       expect.objectContaining({ name: '社名' }),
       expect.anything(),
     );

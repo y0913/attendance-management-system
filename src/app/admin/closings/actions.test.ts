@@ -131,6 +131,7 @@ describe('closeMonthAction (success / conflict)', () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.data.closingId).toBe('ac_001');
     expect(closingsMock.closeMonth).toHaveBeenCalledWith(
+      'co_default',
       'u_general',
       '2026-04',
       'u_admin',
@@ -204,6 +205,7 @@ describe('uncloseAction', () => {
     const result = await uncloseAction({ closingId: 'ac_001' });
     expect(result.ok).toBe(true);
     expect(closingsMock.deleteClosing).toHaveBeenCalledWith(
+      'co_default',
       'ac_001',
       expect.anything(),
     );
