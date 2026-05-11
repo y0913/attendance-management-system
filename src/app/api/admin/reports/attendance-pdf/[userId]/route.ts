@@ -29,7 +29,7 @@ export async function GET(
   const ymParam = searchParams.get('ym');
   const ym = ymParam && isValidYm(ymParam) ? ymParam : currentYearMonthJst();
 
-  const company = await getCompany();
+  const company = await getCompany(session.companyId);
   const summary = await getEffectiveMonthlySummary(target.id, ym);
 
   const buffer = await renderToBuffer(

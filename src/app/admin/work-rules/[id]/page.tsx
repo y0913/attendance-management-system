@@ -52,7 +52,7 @@ export default async function EditWorkRulePage({
   const target = await findWorkRuleVersionById(id);
   if (!target) notFound();
 
-  const versions = await listWorkRuleVersions();
+  const versions = await listWorkRuleVersions(session.companyId);
   const status = classifyVersionStatus(target, versions);
   const isFuture = status === 'future';
   const myPending = await countPendingForApprover(session.id);

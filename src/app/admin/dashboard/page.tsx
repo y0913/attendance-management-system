@@ -96,7 +96,7 @@ export default async function AdminDashboardPage() {
   if (session.role !== 'admin') redirect('/clock');
 
   const now = new Date();
-  const allUsers = await listActiveUsers();
+  const allUsers = await listActiveUsers(session.companyId);
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
   const userIds = allUsers.map((u) => u.id);
   const clockStates = await countClockStates(userIds, now);
@@ -106,8 +106,14 @@ export default async function AdminDashboardPage() {
     itemToRow(item, userNameById),
   );
   const previousYm = shiftYearMonth(currentYearMonthJst(now), -1);
-  const overtimeAlertCount = await countOvertimeAlerts(previousYm);
-  const closingsForMonth = await listClosingsForMonth(previousYm);
+  const overtimeAlertCount = await countOvertimeAlerts(
+    session.companyId,
+    previousYm,
+  );
+  const closingsForMonth = await listClosingsForMonth(
+    session.companyId,
+    previousYm,
+  );
   const closedUserIds = new Set(closingsForMonth.map((c) => c.userId));
   const unclosedCount = allUsers.filter(
     (u) => !closedUserIds.has(u.id),

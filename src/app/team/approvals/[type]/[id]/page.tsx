@@ -135,7 +135,7 @@ export default async function ApprovalDetailPage({
   if (!isValidType(type)) notFound();
 
   const pendingCount = await countPendingForApprover(session.id);
-  const allUsers = await listAllUsers();
+  const allUsers = await listAllUsers(session.companyId);
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 
   if (type === 'correction') {

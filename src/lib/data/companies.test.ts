@@ -31,14 +31,14 @@ beforeEach(() => {
 });
 
 describe('getCompany', () => {
-  it('throws when company is not seeded', async () => {
+  it('throws when company is not found', async () => {
     prismaMock.company.findUnique.mockResolvedValueOnce(null);
-    await expect(getCompany()).rejects.toThrow(/db seed/);
+    await expect(getCompany('co_default')).rejects.toThrow(/not found/);
   });
 
   it('returns MockCompany merged with overrides', async () => {
     prismaMock.company.findUnique.mockResolvedValueOnce(dbCompany);
-    const c = await getCompany();
+    const c = await getCompany('co_default');
     expect(c.id).toBe('co_default');
     expect(c.midMonthRateChangeStrategy).toBe('month_end');
     // overrides フィールドはデフォルト or 直前テストの上書き値
@@ -56,7 +56,7 @@ describe('updateCompany', () => {
       closingDay: 25,
       midMonthRateChangeStrategy: 'daily',
     });
-    const c = await updateCompany({
+    const c = await updateCompany('co_default', {
       name: '新社名',
       closingDay: 25,
       midMonthRateChangeStrategy: 'daily',
@@ -74,22 +74,22 @@ describe('updateCompany', () => {
 
   it('persists monthlyStandardHours via overrides (not DB)', async () => {
     prismaMock.company.update.mockResolvedValueOnce(dbCompany);
-    await updateCompany({ monthlyStandardHours: 160 });
+    await updateCompany('co_default', { monthlyStandardHours: 160 });
     // monthlyStandardHours は DB 側の data には含まれない (スキーマに列なし)
     const arg = prismaMock.company.update.mock.calls[0][0];
     expect(arg.data).not.toHaveProperty('monthlyStandardHours');
 
     // 次回 getCompany で 160 が反映される
     prismaMock.company.findUnique.mockResolvedValueOnce(dbCompany);
-    const c = await getCompany();
+    const c = await getCompany('co_default');
     expect(c.monthlyStandardHours).toBe(160);
   });
 
   it('persists legalHolidayWeekday via overrides', async () => {
     prismaMock.company.update.mockResolvedValueOnce(dbCompany);
-    await updateCompany({ legalHolidayWeekday: 6 });
+    await updateCompany('co_default', { legalHolidayWeekday: 6 });
     prismaMock.company.findUnique.mockResolvedValueOnce(dbCompany);
-    const c = await getCompany();
+    const c = await getCompany('co_default');
     expect(c.legalHolidayWeekday).toBe(6);
   });
 });

@@ -44,7 +44,7 @@ export default async function OvertimeAlertsPage({
   const sp = await searchParams;
   const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : previousYearMonth();
 
-  const alerts = await listOvertimeAlerts(ym);
+  const alerts = await listOvertimeAlerts(session.companyId, ym);
   const myPending = await countPendingForApprover(session.id);
   const prevYm = shiftYearMonth(ym, -1);
   const nextYm = shiftYearMonth(ym, 1);

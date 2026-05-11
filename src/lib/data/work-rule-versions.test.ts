@@ -136,7 +136,7 @@ describe('createWorkRuleVersion', () => {
       createdAt: new Date(),
       createdById: 'u_admin',
     });
-    await createWorkRuleVersion(okRule, 'u_admin');
+    await createWorkRuleVersion('co_default', okRule, 'u_admin');
     const arg = prismaMock.workRuleVersion.create.mock.calls[0][0];
     expect(arg.data.companyId).toBe('co_default');
     expect(arg.data.createdById).toBe('u_admin');
@@ -181,17 +181,21 @@ describe('deleteWorkRuleVersion', () => {
 describe('isValidFromTaken', () => {
   it('true when matching record exists', async () => {
     prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce({ id: 'x' });
-    expect(await isValidFromTaken(new Date('2099-12-01'))).toBe(true);
+    expect(await isValidFromTaken('co_default', new Date('2099-12-01'))).toBe(
+      true,
+    );
   });
 
   it('false when no match', async () => {
     prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce(null);
-    expect(await isValidFromTaken(new Date('2099-12-01'))).toBe(false);
+    expect(await isValidFromTaken('co_default', new Date('2099-12-01'))).toBe(
+      false,
+    );
   });
 
   it('exceptId excludes the given id from match', async () => {
     prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce(null);
-    await isValidFromTaken(new Date('2099-12-01'), 'wrv_self');
+    await isValidFromTaken('co_default', new Date('2099-12-01'), 'wrv_self');
     const arg = prismaMock.workRuleVersion.findFirst.mock.calls[0][0];
     expect(arg.where).toMatchObject({ NOT: { id: 'wrv_self' } });
   });

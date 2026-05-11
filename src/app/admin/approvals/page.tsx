@@ -142,7 +142,7 @@ export default async function AdminApprovalsPage() {
   if (session.role !== 'admin') redirect('/clock');
 
   const items = await listAllPending();
-  const allUsers = await listAllUsers();
+  const allUsers = await listAllUsers(session.companyId);
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
   const rows = items.map((item) => itemToRow(item, userNameById));
   const totalPending = await countAllPending();

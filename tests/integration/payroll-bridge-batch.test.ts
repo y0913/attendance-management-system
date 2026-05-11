@@ -77,7 +77,7 @@ describe('computeMonthlyPayrollForUsers (integration)', () => {
     const single1 = await computeMonthlyPayroll(u1.id, ymKey);
     const single2 = await computeMonthlyPayroll(u2.id, ymKey);
 
-    const batch = await computeMonthlyPayrollForUsers([u1.id, u2.id], ymKey);
+    const batch = await computeMonthlyPayrollForUsers('co_default', [u1.id, u2.id], ymKey);
 
     const b1 = batch.get(u1.id)!;
     const b2 = batch.get(u2.id)!;
@@ -96,7 +96,8 @@ describe('computeMonthlyPayrollForUsers (integration)', () => {
   });
 
   it('空 userIds は空 Map を返す', async () => {
-    const m = await computeMonthlyPayrollForUsers([], ymKey);
+    const m = await computeMonthlyPayrollForUsers('co_default', [], ymKey);
+    // empty 入力は companyId 関係なく短絡で空 Map を返す
     expect(m.size).toBe(0);
   });
 
@@ -110,6 +111,7 @@ describe('computeMonthlyPayrollForUsers (integration)', () => {
     await seedRule(admin.id);
 
     const batch = await computeMonthlyPayrollForUsers(
+      'co_default',
       ['u_does_not_exist'],
       ymKey,
     );
@@ -127,7 +129,7 @@ describe('computeMonthlyPayrollForUsers (integration)', () => {
     await seedTypicalDay(u1.id, '2026-04-01');
 
     // seedRule は呼ばない
-    const batch = await computeMonthlyPayrollForUsers([u1.id], ymKey);
+    const batch = await computeMonthlyPayrollForUsers('co_default', [u1.id], ymKey);
     const r = batch.get(u1.id)!;
     expect(r.rule).toBeNull();
     expect(r.summary).toBeNull();

@@ -87,13 +87,13 @@ describe('findClosing', () => {
 describe('closeMonth (race handling)', () => {
   it('returns the created closing on success', async () => {
     prismaMock.attendanceClosing.create.mockResolvedValueOnce(dbClosing);
-    const result = await closeMonth('u_general', '2026-04', 'u_admin');
+    const result = await closeMonth('co_default', 'u_general', '2026-04', 'u_admin');
     expect(result?.id).toBe('ac_001');
   });
 
   it('returns null on P2002 (race: another tx already closed)', async () => {
     prismaMock.attendanceClosing.create.mockRejectedValueOnce(mkP2002());
-    const result = await closeMonth('u_general', '2026-04', 'u_admin');
+    const result = await closeMonth('co_default', 'u_general', '2026-04', 'u_admin');
     expect(result).toBeNull();
   });
 
@@ -102,13 +102,13 @@ describe('closeMonth (race handling)', () => {
       new Error('connection lost'),
     );
     await expect(
-      closeMonth('u_general', '2026-04', 'u_admin'),
+      closeMonth('co_default', 'u_general', '2026-04', 'u_admin'),
     ).rejects.toThrow(/connection lost/);
   });
 
   it('builds snapshot before tx (read-only, no race risk)', async () => {
     prismaMock.attendanceClosing.create.mockResolvedValueOnce(dbClosing);
-    await closeMonth('u_general', '2026-04', 'u_admin');
+    await closeMonth('co_default', 'u_general', '2026-04', 'u_admin');
     expect(summaryMock.summarizeMonth).toHaveBeenCalledWith(
       'u_general',
       '2026-04',
@@ -118,7 +118,7 @@ describe('closeMonth (race handling)', () => {
 
   it('writes snapshot data with companyId pinned', async () => {
     prismaMock.attendanceClosing.create.mockResolvedValueOnce(dbClosing);
-    await closeMonth('u_general', '2026-04', 'u_admin');
+    await closeMonth('co_default', 'u_general', '2026-04', 'u_admin');
     const arg = prismaMock.attendanceClosing.create.mock.calls[0][0];
     expect(arg.data.companyId).toBe('co_default');
     expect(arg.data.userId).toBe('u_general');

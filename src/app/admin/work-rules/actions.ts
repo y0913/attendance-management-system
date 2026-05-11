@@ -117,7 +117,7 @@ export async function upsertWorkRuleAction(
 
   try {
     const result = await prisma.$transaction(async (tx): Promise<Result> => {
-      if (await isValidFromTaken(validFrom, data.id, tx)) {
+      if (await isValidFromTaken(session.companyId, validFrom, data.id, tx)) {
         return {
           ok: false,
           code: 'CONFLICT',
@@ -149,7 +149,12 @@ export async function upsertWorkRuleAction(
         );
         return { ok: true, id: data.id };
       }
-      const created = await createWorkRuleVersion(ruleInput, session.id, tx);
+      const created = await createWorkRuleVersion(
+        session.companyId,
+        ruleInput,
+        session.id,
+        tx,
+      );
       await recordAuditLog(
         {
           entityType: 'work_rule_version',

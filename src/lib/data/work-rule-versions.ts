@@ -36,8 +36,6 @@ export const LEGAL_MINIMUMS = {
   monthly60hThresholdMaxMin: 3600, // 60時間
 } as const;
 
-const DEFAULT_COMPANY_ID = 'co_default';
-
 const toMockWorkRuleVersion = (v: WorkRuleVersion): MockWorkRuleVersion => ({
   id: v.id,
   validFrom: v.validFrom,
@@ -55,9 +53,11 @@ const toMockWorkRuleVersion = (v: WorkRuleVersion): MockWorkRuleVersion => ({
   createdById: v.createdById,
 });
 
-export async function listWorkRuleVersions(): Promise<MockWorkRuleVersion[]> {
+export async function listWorkRuleVersions(
+  companyId: string,
+): Promise<MockWorkRuleVersion[]> {
   const list = await prisma.workRuleVersion.findMany({
-    where: { companyId: DEFAULT_COMPANY_ID },
+    where: { companyId },
     orderBy: { validFrom: 'asc' },
   });
   return list.map(toMockWorkRuleVersion);
@@ -71,11 +71,12 @@ export async function findWorkRuleVersionById(
 }
 
 export async function getCurrentWorkRuleVersion(
+  companyId: string,
   asOf: Date = new Date(),
 ): Promise<MockWorkRuleVersion | null> {
   const v = await prisma.workRuleVersion.findFirst({
     where: {
-      companyId: DEFAULT_COMPANY_ID,
+      companyId,
       validFrom: { lte: asOf },
     },
     orderBy: { validFrom: 'desc' },
@@ -179,13 +180,14 @@ export function checkComplianceViolations(
 }
 
 export async function createWorkRuleVersion(
+  companyId: string,
   input: RuleInput,
   createdById: string,
   db: DbClient = prisma,
 ): Promise<MockWorkRuleVersion> {
   const created = await db.workRuleVersion.create({
     data: {
-      companyId: DEFAULT_COMPANY_ID,
+      companyId,
       validFrom: input.validFrom,
       dailyOtThresholdMin: input.dailyOtThresholdMin,
       weeklyOtThresholdMin: input.weeklyOtThresholdMin,
@@ -246,13 +248,14 @@ export async function deleteWorkRuleVersion(
 }
 
 export async function isValidFromTaken(
+  companyId: string,
   validFrom: Date,
   exceptId?: string,
   db: DbClient = prisma,
 ): Promise<boolean> {
   const v = await db.workRuleVersion.findFirst({
     where: {
-      companyId: DEFAULT_COMPANY_ID,
+      companyId,
       validFrom,
       ...(exceptId ? { NOT: { id: exceptId } } : {}),
     },

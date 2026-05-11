@@ -75,7 +75,7 @@ export default async function AuditLogsPage({
     offset: (currentPage - 1) * PAGE_SIZE,
   });
   const myPending = await countPendingForApprover(session.id);
-  const allUsers = await listAllUsers();
+  const allUsers = await listAllUsers(session.companyId);
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 
   const buildHref = (overrides: {

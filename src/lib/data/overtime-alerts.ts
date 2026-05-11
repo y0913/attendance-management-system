@@ -12,9 +12,10 @@ export interface OvertimeAlertItem {
 }
 
 export async function listOvertimeAlerts(
+  companyId: string,
   yearMonth: string,
 ): Promise<OvertimeAlertItem[]> {
-  const users = await listActiveUsers();
+  const users = await listActiveUsers(companyId);
   const items = await Promise.all(
     users.map(async (user) => {
       const summary = await getEffectiveMonthlySummary(user.id, yearMonth);
@@ -30,6 +31,9 @@ export async function listOvertimeAlerts(
     );
 }
 
-export async function countOvertimeAlerts(yearMonth: string): Promise<number> {
-  return (await listOvertimeAlerts(yearMonth)).length;
+export async function countOvertimeAlerts(
+  companyId: string,
+  yearMonth: string,
+): Promise<number> {
+  return (await listOvertimeAlerts(companyId, yearMonth)).length;
 }

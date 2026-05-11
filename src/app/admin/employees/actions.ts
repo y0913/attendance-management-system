@@ -147,6 +147,7 @@ export async function upsertEmployeeAction(
         {
           name: data.name,
           email: data.email,
+          companyId: session.companyId,
           role: data.role,
           managerId: data.managerId,
           employmentType: data.employmentType,

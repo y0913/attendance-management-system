@@ -47,7 +47,6 @@ export interface MockAttendanceClosing {
   snapshot: ClosingSnapshot;
 }
 
-const DEFAULT_COMPANY_ID = 'co_default';
 
 const toMockClosing = (c: AttendanceClosing): MockAttendanceClosing => ({
   id: c.id,
@@ -154,10 +153,11 @@ export async function findClosing(
 }
 
 export async function listClosingsForMonth(
+  companyId: string,
   yearMonth: string,
 ): Promise<MockAttendanceClosing[]> {
   const list = await prisma.attendanceClosing.findMany({
-    where: { yearMonth },
+    where: { companyId, yearMonth },
   });
   return list.map(toMockClosing);
 }
@@ -188,6 +188,7 @@ export async function deleteClosing(
 }
 
 export async function closeMonth(
+  companyId: string,
   userId: string,
   yearMonth: string,
   closedById: string,
@@ -199,7 +200,7 @@ export async function closeMonth(
     try {
       const created = await tx.attendanceClosing.create({
         data: {
-          companyId: DEFAULT_COMPANY_ID,
+          companyId,
           userId,
           yearMonth,
           closedById,
@@ -260,13 +261,14 @@ export async function getEffectiveMonthlySummary(
 // 合計クエリ数: listClosingsForMonth (1) + summarizeMonthForUsers (1) + listLeaveRequestsForUsers (1)
 // = 最大 3 query (未締め user が居なければ未締め分は 0 query)。
 export async function getEffectiveMonthlySummariesForUsers(
+  companyId: string,
   userIds: string[],
   yearMonth: string,
 ): Promise<Map<string, EffectiveMonthlySummary>> {
   const result = new Map<string, EffectiveMonthlySummary>();
   if (userIds.length === 0) return result;
 
-  const closings = await listClosingsForMonth(yearMonth);
+  const closings = await listClosingsForMonth(companyId, yearMonth);
   const closedById = new Map(closings.map((c) => [c.userId, c]));
   const unclosedIds = userIds.filter((id) => !closedById.has(id));
   const unclosedSnapshots =

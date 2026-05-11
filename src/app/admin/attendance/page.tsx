@@ -82,7 +82,7 @@ export default async function AdminAttendancePage({
     Number.isFinite(Number(sp.page)) ? Number(sp.page) : 1,
   );
 
-  const users = await listActiveUsers();
+  const users = await listActiveUsers(session.companyId);
   const userById = new Map(users.map((u) => [u.id, u]));
   const filtered = users
     .filter((u) => (roleFilter ? u.role === roleFilter : true))
@@ -106,6 +106,7 @@ export default async function AdminAttendancePage({
   // batch fetch する。N+1 回避)。締め済み user 分は snapshot を流用するので、クエリは
   // 最大 3 (closings / clocks / leaves)。
   const summaries = await getEffectiveMonthlySummariesForUsers(
+    session.companyId,
     paged.map((u) => u.id),
     ym,
   );

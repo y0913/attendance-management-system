@@ -1,7 +1,3 @@
-// Phase 2: 内部を Prisma 経由に書き換え。API 形は維持しつつ async 化。
-//
-// マルチテナント化は将来課題。骨組み段階では会社1社のみ前提で `co_default` 固定。
-
 import type { Company, MidMonthRateChangeStrategy } from '@prisma/client';
 import { prisma, type DbClient } from '@/lib/db';
 
@@ -16,10 +12,9 @@ export interface MockCompany {
   legalHolidayWeekday: Weekday;
 }
 
-const DEFAULT_COMPANY_ID = 'co_default';
-
-// 暫定: monthlyStandardHours / legalHolidayWeekday は Prisma スキーマにまだ無いので
-// プロセス内オーバーライドで保持する。スキーマ拡張時にマイグレーションで列追加する想定。
+// monthlyStandardHours / legalHolidayWeekday は Prisma スキーマに列がなく、
+// プロセス内オーバーライドで保持する。マルチテナントでは本来 companyId 単位に
+// 分けるべきだが、portfolio 用途で「全社共通の運用値」として割り切る。
 const overrides: { monthlyStandardHours: number; legalHolidayWeekday: Weekday } = {
   monthlyStandardHours: 176,
   legalHolidayWeekday: 0,
@@ -34,14 +29,10 @@ const toMockCompany = (c: Company): MockCompany => ({
   legalHolidayWeekday: overrides.legalHolidayWeekday,
 });
 
-export async function getCompany(): Promise<MockCompany> {
-  const c = await prisma.company.findUnique({
-    where: { id: DEFAULT_COMPANY_ID },
-  });
+export async function getCompany(companyId: string): Promise<MockCompany> {
+  const c = await prisma.company.findUnique({ where: { id: companyId } });
   if (!c) {
-    throw new Error(
-      `Default company (${DEFAULT_COMPANY_ID}) not found. Run \`npx prisma db seed\`.`,
-    );
+    throw new Error(`Company (${companyId}) not found.`);
   }
   return toMockCompany(c);
 }
@@ -55,6 +46,7 @@ export interface UpdateCompanyInput {
 }
 
 export async function updateCompany(
+  companyId: string,
   input: UpdateCompanyInput,
   db: DbClient = prisma,
 ): Promise<MockCompany> {
@@ -65,7 +57,7 @@ export async function updateCompany(
     overrides.legalHolidayWeekday = input.legalHolidayWeekday;
   }
   const updated = await db.company.update({
-    where: { id: DEFAULT_COMPANY_ID },
+    where: { id: companyId },
     data: {
       name: input.name,
       closingDay: input.closingDay,

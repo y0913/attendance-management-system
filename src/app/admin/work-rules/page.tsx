@@ -39,7 +39,7 @@ export default async function WorkRulesTimelinePage() {
   if (!session) redirect('/login');
   if (session.role !== 'admin') redirect('/clock');
 
-  const versions = await listWorkRuleVersions();
+  const versions = await listWorkRuleVersions(session.companyId);
   const sorted = versions
     .slice()
     .sort((a, b) => b.validFrom.getTime() - a.validFrom.getTime());

@@ -39,8 +39,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   const ymParam = searchParams.get('ym');
   const ym = ymParam && isValidYm(ymParam) ? ymParam : currentYearMonthJst();
 
-  const company = await getCompany();
-  const users = (await listActiveUsers()).sort((a, b) =>
+  const company = await getCompany(session.companyId);
+  const users = (await listActiveUsers(session.companyId)).sort((a, b) =>
     a.name.localeCompare(b.name, 'ja'),
   );
   const userById = new Map(users.map((u) => [u.id, u]));
@@ -81,8 +81,8 @@ export async function GET(request: NextRequest): Promise<Response> {
   ];
   const userIds = users.map((u) => u.id);
   const [baseSummaries, payrolls] = await Promise.all([
-    getEffectiveMonthlySummariesForUsers(userIds, ym),
-    computeMonthlyPayrollForUsers(userIds, ym),
+    getEffectiveMonthlySummariesForUsers(session.companyId, userIds, ym),
+    computeMonthlyPayrollForUsers(session.companyId, userIds, ym),
   ]);
 
   const body: unknown[][] = users.map((u): unknown[] => {

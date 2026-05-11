@@ -16,12 +16,12 @@ describe('closeMonth (integration / race handling)', () => {
       email: 'admin@example.com',
     });
 
-    const first = await closeMonth(user.id, '2026-04', admin.id);
+    const first = await closeMonth('co_default', user.id, '2026-04', admin.id);
     expect(first).not.toBeNull();
     expect(first?.userId).toBe(user.id);
     expect(first?.yearMonth).toBe('2026-04');
 
-    const second = await closeMonth(user.id, '2026-04', admin.id);
+    const second = await closeMonth('co_default', user.id, '2026-04', admin.id);
     expect(second).toBeNull(); // P2002 → null
 
     // DB 上は 1 件のみ
@@ -44,7 +44,7 @@ describe('closeMonth (integration / race handling)', () => {
     const N = 5;
     const results = await Promise.all(
       Array.from({ length: N }, () =>
-        closeMonth(user.id, '2026-05', admin.id),
+        closeMonth('co_default', user.id, '2026-05', admin.id),
       ),
     );
     const successes = results.filter((r) => r !== null);
@@ -70,9 +70,9 @@ describe('closeMonth (integration / race handling)', () => {
     });
 
     const [r1, r2, r3] = await Promise.all([
-      closeMonth(u1.id, '2026-04', admin.id),
-      closeMonth(u2.id, '2026-04', admin.id),
-      closeMonth(u1.id, '2026-05', admin.id),
+      closeMonth('co_default', u1.id, '2026-04', admin.id),
+      closeMonth('co_default', u2.id, '2026-04', admin.id),
+      closeMonth('co_default', u1.id, '2026-05', admin.id),
     ]);
     expect(r1).not.toBeNull();
     expect(r2).not.toBeNull();
@@ -89,7 +89,7 @@ describe('closeMonth (integration / race handling)', () => {
     });
 
     expect(await findClosing(user.id, '2026-04')).toBeNull();
-    await closeMonth(user.id, '2026-04', admin.id);
+    await closeMonth('co_default', user.id, '2026-04', admin.id);
     const found = await findClosing(user.id, '2026-04');
     expect(found).not.toBeNull();
     expect(found?.closedById).toBe(admin.id);

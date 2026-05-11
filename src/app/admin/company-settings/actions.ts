@@ -48,9 +48,10 @@ export async function updateCompanySettingsAction(input: {
   }
 
   try {
-    const before = await getCompany();
+    const before = await getCompany(session.companyId);
     await prisma.$transaction(async (tx) => {
       const after = await updateCompany(
+        session.companyId,
         {
           name: parsed.data.name.trim(),
           closingDay: parsed.data.closingDay,

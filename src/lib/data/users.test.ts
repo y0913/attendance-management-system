@@ -98,21 +98,22 @@ describe('isManagerOf', () => {
 });
 
 describe('listActiveUsers', () => {
-  it('filters by deactivatedAt: null', async () => {
+  it('filters by companyId + deactivatedAt: null', async () => {
     prismaMock.user.findMany.mockResolvedValueOnce([]);
-    await listActiveUsers();
+    await listActiveUsers('co_default');
     expect(prismaMock.user.findMany).toHaveBeenCalledWith({
-      where: { deactivatedAt: null },
+      where: { companyId: 'co_default', deactivatedAt: null },
     });
   });
 });
 
 describe('createMockUser', () => {
-  it('inserts with companyId pinned to co_default', async () => {
+  it('inserts with provided companyId', async () => {
     prismaMock.user.create.mockResolvedValueOnce(dbUser);
     await createMockUser({
       email: 'new@example.com',
       name: '新人',
+      companyId: 'co_default',
       role: 'general',
       managerId: 'u_approver',
       employmentType: 'monthly',

@@ -43,7 +43,7 @@ export default async function ReportsPage({
 
   const sp = await searchParams;
   const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : previousYearMonth();
-  const users = (await listActiveUsers()).sort((a, b) =>
+  const users = (await listActiveUsers(session.companyId)).sort((a, b) =>
     a.name.localeCompare(b.name, 'ja'),
   );
   const myPending = await countPendingForApprover(session.id);

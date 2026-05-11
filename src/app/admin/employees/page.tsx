@@ -43,7 +43,7 @@ export default async function EmployeesPage({
 
   const sp = await searchParams;
   const showInactive = sp.show === 'all';
-  const allUsers = await listAllUsers();
+  const allUsers = await listAllUsers(session.companyId);
   const userById = new Map(allUsers.map((u) => [u.id, u]));
   const visible = showInactive
     ? allUsers

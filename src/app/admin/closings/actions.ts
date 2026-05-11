@@ -48,6 +48,7 @@ export async function closeMonthAction(input: {
     const closing = await withRetry(() =>
       prisma.$transaction(async (tx) => {
         const created = await closeMonth(
+          session.companyId,
           parsed.data.userId,
           parsed.data.yearMonth,
           session.id,
@@ -116,12 +117,18 @@ export async function bulkCloseMonthAction(input: {
     let skippedCount = 0;
     // ユーザーごとに tx を分けてロック範囲を限定 (全社一括で1 tx にすると
     // attendance_closings/audit_logs が長時間ロックされ、他オペが詰まる)。
-    for (const u of await listActiveUsers()) {
-      // ユーザー単位の tx を retry でラップ。並列 admin の競合 (P2034 / 40001 / 40P01)
+    for (const u of await listActiveUsers(session.companyId)) {
+      // ユーザー単位の tx を分けてロック範囲を限定。並列 admin の競合 (P2034 / 40001 / 40P01)
       // を吸収する。tx 失敗時は audit_log も roll back されるので冪等。
       const closing = await withRetry(() =>
         prisma.$transaction(async (tx) => {
-          const created = await closeMonth(u.id, ym, session.id, tx);
+          const created = await closeMonth(
+            session.companyId,
+            u.id,
+            ym,
+            session.id,
+            tx,
+          );
           if (!created) return null;
           await recordAuditLog(
             {

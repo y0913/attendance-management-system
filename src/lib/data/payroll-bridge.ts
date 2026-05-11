@@ -130,12 +130,14 @@ export async function computeMonthlyPayroll(
 
   const days = listMonthDays(yearMonth);
   const monthEndDate = days[days.length - 1] ?? new Date();
-  const currentRule = await getCurrentWorkRuleVersion(monthEndDate);
+  const currentRule = await getCurrentWorkRuleVersion(user.companyId, monthEndDate);
   if (!currentRule) return emptyResult(yearMonth);
 
   const rule = toCalcWorkRuleVersion(currentRule);
-  const allRules = (await listWorkRuleVersions()).map(toCalcWorkRuleVersion);
-  const company = await getCompany();
+  const allRules = (await listWorkRuleVersions(user.companyId)).map(
+    toCalcWorkRuleVersion,
+  );
+  const company = await getCompany(user.companyId);
   const clocks = await listClocksForMonth(userId, yearMonth);
 
   return buildPayrollResult(user, yearMonth, days, clocks, rule, allRules, company);
@@ -147,6 +149,7 @@ export async function computeMonthlyPayroll(
 // listWorkRuleVersions (1) + getCompany (1) + listClocksForUsersMonth (1) = 5 query。
 // 単発 × N (= 4N + 30N query) と比べて N に依存しない定数オーダーに圧縮される。
 export async function computeMonthlyPayrollForUsers(
+  companyId: string,
   userIds: string[],
   yearMonth: string,
 ): Promise<Map<string, MonthlyPayrollResult>> {
@@ -155,7 +158,7 @@ export async function computeMonthlyPayrollForUsers(
 
   const days = listMonthDays(yearMonth);
   const monthEndDate = days[days.length - 1] ?? new Date();
-  const currentRule = await getCurrentWorkRuleVersion(monthEndDate);
+  const currentRule = await getCurrentWorkRuleVersion(companyId, monthEndDate);
   if (!currentRule) {
     for (const id of userIds) result.set(id, emptyResult(yearMonth));
     return result;
@@ -163,8 +166,8 @@ export async function computeMonthlyPayrollForUsers(
 
   const rule = toCalcWorkRuleVersion(currentRule);
   const [allRulesRaw, company, users, clocksByUser] = await Promise.all([
-    listWorkRuleVersions(),
-    getCompany(),
+    listWorkRuleVersions(companyId),
+    getCompany(companyId),
     findMockUsersByIds(userIds),
     listClocksForUsersMonth(userIds, yearMonth),
   ]);

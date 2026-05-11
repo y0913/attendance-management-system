@@ -119,7 +119,7 @@ describe('getEffectiveMonthlySummariesForUsers (integration)', () => {
       },
     });
 
-    const batch = await getEffectiveMonthlySummariesForUsers(
+    const batch = await getEffectiveMonthlySummariesForUsers('co_default',
       [u1.id, u2.id],
       ymKey,
     );
@@ -141,7 +141,7 @@ describe('getEffectiveMonthlySummariesForUsers (integration)', () => {
 
   it('non-existent userId yields zeroed unclosed summary', async () => {
     await seedCompany();
-    const batch = await getEffectiveMonthlySummariesForUsers(
+    const batch = await getEffectiveMonthlySummariesForUsers('co_default',
       ['u_does_not_exist'],
       ymKey,
     );

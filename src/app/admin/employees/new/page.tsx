@@ -27,7 +27,7 @@ export default async function NewEmployeePage() {
 
   const today = formatInTimeZone(new Date(), JST_TIMEZONE, 'yyyy-MM-dd');
   const myPending = await countPendingForApprover(session.id);
-  const managerCandidates = (await listAllUsers())
+  const managerCandidates = (await listAllUsers(session.companyId))
     .filter((u) => u.deactivatedAt === null)
     .filter((u) => u.role === 'admin' || u.role === 'approver')
     .map((u) => ({ id: u.id, name: u.name, role: ROLE_LABEL[u.role] }));

@@ -14,9 +14,9 @@ export default function SignUpPage() {
     <div className="flex min-h-screen items-center justify-center bg-muted px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>新規アカウント登録</CardTitle>
+          <CardTitle>会社を登録する</CardTitle>
           <CardDescription>
-            登録後、入力したメールアドレスにログインリンクを送信します
+            あなたが管理者となる新しい会社を作成します。登録後、メールアドレスにログインリンクを送信します
           </CardDescription>
         </CardHeader>
         <CardContent>

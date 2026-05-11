@@ -13,6 +13,7 @@ export interface MockUser {
   id: string;
   email: string;
   name: string;
+  companyId: string;
   role: Role;
   managerId: string | null;
   employmentType: EmploymentType;
@@ -21,12 +22,11 @@ export interface MockUser {
   deactivatedAt: Date | null;
 }
 
-const COMPANY_ID = 'co_default';
-
 const toMockUser = (u: User): MockUser => ({
   id: u.id,
   email: u.email,
   name: u.name ?? '',
+  companyId: u.companyId,
   role: u.role,
   managerId: u.managerId,
   employmentType: u.employmentType,
@@ -62,9 +62,9 @@ export async function isManagerOf(
   return target?.managerId === managerId;
 }
 
-export async function listActiveUsers(): Promise<MockUser[]> {
+export async function listActiveUsers(companyId: string): Promise<MockUser[]> {
   const users = await prisma.user.findMany({
-    where: { deactivatedAt: null },
+    where: { companyId, deactivatedAt: null },
   });
   return users.map(toMockUser);
 }
@@ -77,14 +77,15 @@ export async function findMockUsersByIds(ids: string[]): Promise<MockUser[]> {
   return users.map(toMockUser);
 }
 
-export async function listAllUsers(): Promise<MockUser[]> {
-  const users = await prisma.user.findMany();
+export async function listAllUsers(companyId: string): Promise<MockUser[]> {
+  const users = await prisma.user.findMany({ where: { companyId } });
   return users.map(toMockUser);
 }
 
 export interface CreateUserInput {
   email: string;
   name: string;
+  companyId: string;
   role: Role;
   managerId: string | null;
   employmentType: EmploymentType;
@@ -100,7 +101,7 @@ export async function createMockUser(
     data: {
       email: input.email,
       name: input.name,
-      companyId: COMPANY_ID,
+      companyId: input.companyId,
       role: input.role,
       managerId: input.managerId,
       employmentType: input.employmentType,

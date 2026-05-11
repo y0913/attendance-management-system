@@ -76,7 +76,7 @@ export default async function ClosingsPage({
   const sp = await searchParams;
   const ym = sp.ym && isValidYm(sp.ym) ? sp.ym : previousYearMonth();
 
-  const users = (await listActiveUsers()).sort((a, b) =>
+  const users = (await listActiveUsers(session.companyId)).sort((a, b) =>
     a.name.localeCompare(b.name, 'ja'),
   );
   const userNameById = new Map(users.map((u) => [u.id, u.name]));

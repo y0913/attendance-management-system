@@ -140,7 +140,7 @@ export default async function ApplicationsPage() {
   const session = await getMockSession();
   if (!session) redirect('/login');
 
-  const allUsers = await listAllUsers();
+  const allUsers = await listAllUsers(session.companyId);
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
   const corrections = (await listCorrectionRequests(session.id)).map((r) =>
     correctionToRow(r, userNameById),

@@ -137,7 +137,7 @@ export default async function TeamApprovalsPage() {
   }
 
   const items = await listPendingForApprover(session.id);
-  const allUsers = await listAllUsers();
+  const allUsers = await listAllUsers(session.companyId);
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
   const rows = items.map((item) => itemToRow(item, userNameById));
   const pendingCount = await countPendingForApprover(session.id);
