@@ -57,6 +57,7 @@ export async function decideRequestAction(input: {
         parsed.data.type === 'correction'
           ? await decideCorrection(
               {
+                companyId: session.companyId,
                 id: parsed.data.id,
                 deciderId: session.id,
                 decision: parsed.data.decision,
@@ -66,6 +67,7 @@ export async function decideRequestAction(input: {
             )
           : await decideLeave(
               {
+                companyId: session.companyId,
                 id: parsed.data.id,
                 deciderId: session.id,
                 decision: parsed.data.decision,

@@ -11,6 +11,7 @@ const { prismaMock, summaryMock, leaveMock } = vi.hoisted(() => ({
       create: vi.fn(),
       delete: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
     },
   },
@@ -44,12 +45,6 @@ const mkP2002 = () =>
     code: 'P2002',
     clientVersion: 'x',
   });
-const mkP2025 = () =>
-  new Prisma.PrismaClientKnownRequestError('not found', {
-    code: 'P2025',
-    clientVersion: 'x',
-  });
-
 const dbClosing = {
   id: 'ac_001',
   companyId: 'co_default',
@@ -127,22 +122,27 @@ describe('closeMonth (race handling)', () => {
 });
 
 describe('deleteClosing', () => {
-  it('returns null on P2025', async () => {
-    prismaMock.attendanceClosing.delete.mockRejectedValueOnce(mkP2025());
-    expect(await deleteClosing('ac_missing')).toBeNull();
+  it('returns null when target not in company', async () => {
+    prismaMock.attendanceClosing.findFirst.mockResolvedValueOnce(null);
+    expect(await deleteClosing('co_default', 'ac_missing')).toBeNull();
+    expect(prismaMock.attendanceClosing.delete).not.toHaveBeenCalled();
   });
 
   it('returns the deleted record on success', async () => {
+    prismaMock.attendanceClosing.findFirst.mockResolvedValueOnce(dbClosing);
     prismaMock.attendanceClosing.delete.mockResolvedValueOnce(dbClosing);
-    const result = await deleteClosing('ac_001');
+    const result = await deleteClosing('co_default', 'ac_001');
     expect(result?.id).toBe('ac_001');
   });
 
   it('rethrows non-P2025 errors', async () => {
+    prismaMock.attendanceClosing.findFirst.mockResolvedValueOnce(dbClosing);
     prismaMock.attendanceClosing.delete.mockRejectedValueOnce(
       new Error('foreign key violation'),
     );
-    await expect(deleteClosing('ac_001')).rejects.toThrow(/foreign key/);
+    await expect(deleteClosing('co_default', 'ac_001')).rejects.toThrow(
+      /foreign key/,
+    );
   });
 });
 

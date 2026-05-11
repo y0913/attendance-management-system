@@ -34,7 +34,7 @@ export default async function EditEmployeePage({
 
   const { id } = await params;
   const target = await findMockUserById(id);
-  if (!target) notFound();
+  if (!target || target.companyId !== session.companyId) notFound();
 
   const myPending = await countPendingForApprover(session.id);
   const managerCandidates = (await listAllUsers(session.companyId))

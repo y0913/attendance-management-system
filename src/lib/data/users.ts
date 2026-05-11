@@ -123,10 +123,15 @@ export interface UpdateUserInput {
 }
 
 export async function updateMockUser(
+  companyId: string,
   id: string,
   input: UpdateUserInput,
   db: DbClient = prisma,
 ): Promise<MockUser | null> {
+  // companyId 一致を先に検証してからの update。cross-tenant の URL 推測経由で
+  // 他社ユーザーが書き換えられるのを防ぐ。
+  const existing = await db.user.findFirst({ where: { id, companyId } });
+  if (!existing) return null;
   try {
     const user = await db.user.update({
       where: { id },
@@ -148,10 +153,13 @@ export async function updateMockUser(
 }
 
 export async function setUserDeactivation(
+  companyId: string,
   id: string,
   deactivatedAt: Date | null,
   db: DbClient = prisma,
 ): Promise<MockUser | null> {
+  const existing = await db.user.findFirst({ where: { id, companyId } });
+  if (!existing) return null;
   try {
     const user = await db.user.update({
       where: { id },

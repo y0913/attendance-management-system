@@ -64,9 +64,12 @@ export async function listWorkRuleVersions(
 }
 
 export async function findWorkRuleVersionById(
+  companyId: string,
   id: string,
 ): Promise<MockWorkRuleVersion | null> {
-  const v = await prisma.workRuleVersion.findUnique({ where: { id } });
+  const v = await prisma.workRuleVersion.findFirst({
+    where: { id, companyId },
+  });
   return v ? toMockWorkRuleVersion(v) : null;
 }
 
@@ -206,10 +209,15 @@ export async function createWorkRuleVersion(
 }
 
 export async function updateWorkRuleVersion(
+  companyId: string,
   id: string,
   input: RuleInput,
   db: DbClient = prisma,
 ): Promise<MockWorkRuleVersion | null> {
+  const existing = await db.workRuleVersion.findFirst({
+    where: { id, companyId },
+  });
+  if (!existing) return null;
   try {
     const updated = await db.workRuleVersion.update({
       where: { id },
@@ -235,9 +243,14 @@ export async function updateWorkRuleVersion(
 }
 
 export async function deleteWorkRuleVersion(
+  companyId: string,
   id: string,
   db: DbClient = prisma,
 ): Promise<boolean> {
+  const existing = await db.workRuleVersion.findFirst({
+    where: { id, companyId },
+  });
+  if (!existing) return false;
   try {
     await db.workRuleVersion.delete({ where: { id } });
     return true;

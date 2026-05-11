@@ -139,7 +139,7 @@ export default async function ApprovalDetailPage({
   const userNameById = new Map(allUsers.map((u) => [u.id, u.name]));
 
   if (type === 'correction') {
-    const r = await findCorrectionById(id);
+    const r = await findCorrectionById(session.companyId, id);
     if (!r) notFound();
     if (!canDecideRequest(session, r)) {
       redirect('/team/approvals');
@@ -240,7 +240,7 @@ export default async function ApprovalDetailPage({
   }
 
   // leave
-  const r = await findLeaveRequestById(id);
+  const r = await findLeaveRequestById(session.companyId, id);
   if (!r) notFound();
   if (!canDecideRequest(session, r)) {
     redirect('/team/approvals');

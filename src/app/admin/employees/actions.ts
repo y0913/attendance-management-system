@@ -84,14 +84,17 @@ export async function upsertEmployeeAction(
   }
 
   try {
-    if (data.managerId !== null && !(await findMockUserById(data.managerId))) {
-      return {
-        ok: false,
-        error: {
-          code: 'VALIDATION',
-          details: { managerId: '存在しないユーザー' },
-        },
-      };
+    if (data.managerId !== null) {
+      const manager = await findMockUserById(data.managerId);
+      if (!manager || manager.companyId !== session.companyId) {
+        return {
+          ok: false,
+          error: {
+            code: 'VALIDATION',
+            details: { managerId: '存在しないユーザー' },
+          },
+        };
+      }
     }
 
     if (await isEmailTaken(data.email, data.id)) {
@@ -108,10 +111,13 @@ export async function upsertEmployeeAction(
 
     if (data.id) {
       const target = await findMockUserById(data.id);
-      if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
+      if (!target || target.companyId !== session.companyId) {
+        return { ok: false, error: { code: 'NOT_FOUND' } };
+      }
       const beforeSnap = { ...target };
       await prisma.$transaction(async (tx) => {
         const updated = await updateMockUser(
+          session.companyId,
           data.id!,
           {
             name: data.name,
@@ -211,11 +217,14 @@ export async function setEmployeeDeactivationAction(input: {
 
   try {
     const target = await findMockUserById(parsed.data.id);
-    if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
+    if (!target || target.companyId !== session.companyId) {
+      return { ok: false, error: { code: 'NOT_FOUND' } };
+    }
 
     const beforeSnap = { ...target };
     await prisma.$transaction(async (tx) => {
       const updated = await setUserDeactivation(
+        session.companyId,
         parsed.data.id,
         parsed.data.deactivate ? new Date() : null,
         tx,

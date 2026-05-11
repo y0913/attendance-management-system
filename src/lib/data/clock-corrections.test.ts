@@ -67,13 +67,14 @@ beforeEach(() => {
 
 describe('decideCorrection', () => {
   it('approve triggers replaceClocksForDate with afterPayload', async () => {
-    prismaMock.clockCorrectionRequest.findUnique.mockResolvedValueOnce(
+    prismaMock.clockCorrectionRequest.findFirst.mockResolvedValueOnce(
       fakeRequest(),
     );
     prismaMock.clockCorrectionRequest.update.mockResolvedValueOnce(
       fakeRequest({ status: 'approved', decidedAt: new Date() }),
     );
     const result = await decideCorrection({
+      companyId: 'co_default',
       id: 'ccr_test',
       deciderId: 'u_approver',
       decision: 'approve',
@@ -93,13 +94,14 @@ describe('decideCorrection', () => {
   });
 
   it('reject does NOT trigger replaceClocksForDate', async () => {
-    prismaMock.clockCorrectionRequest.findUnique.mockResolvedValueOnce(
+    prismaMock.clockCorrectionRequest.findFirst.mockResolvedValueOnce(
       fakeRequest(),
     );
     prismaMock.clockCorrectionRequest.update.mockResolvedValueOnce(
       fakeRequest({ status: 'rejected', decidedAt: new Date() }),
     );
     const result = await decideCorrection({
+      companyId: 'co_default',
       id: 'ccr_test',
       deciderId: 'u_approver',
       decision: 'reject',
@@ -110,10 +112,11 @@ describe('decideCorrection', () => {
   });
 
   it('FORBIDDEN if non-admin and approver mismatch', async () => {
-    prismaMock.clockCorrectionRequest.findUnique.mockResolvedValueOnce(
+    prismaMock.clockCorrectionRequest.findFirst.mockResolvedValueOnce(
       fakeRequest({ currentApproverId: 'u_other' }),
     );
     const result = await decideCorrection({
+      companyId: 'co_default',
       id: 'ccr_test',
       deciderId: 'u_approver',
       decision: 'approve',
@@ -126,10 +129,11 @@ describe('decideCorrection', () => {
   });
 
   it('NOT_PENDING if already approved', async () => {
-    prismaMock.clockCorrectionRequest.findUnique.mockResolvedValueOnce(
+    prismaMock.clockCorrectionRequest.findFirst.mockResolvedValueOnce(
       fakeRequest({ status: 'approved' }),
     );
     const result = await decideCorrection({
+      companyId: 'co_default',
       id: 'ccr_test',
       deciderId: 'u_approver',
       decision: 'approve',
@@ -140,8 +144,9 @@ describe('decideCorrection', () => {
   });
 
   it('NOT_FOUND if id does not exist', async () => {
-    prismaMock.clockCorrectionRequest.findUnique.mockResolvedValueOnce(null);
+    prismaMock.clockCorrectionRequest.findFirst.mockResolvedValueOnce(null);
     const result = await decideCorrection({
+      companyId: 'co_default',
       id: 'ccr_missing',
       deciderId: 'u_approver',
       decision: 'approve',

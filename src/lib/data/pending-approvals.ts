@@ -46,10 +46,12 @@ export async function countPendingForApprover(
   return corrs.length + leaves.length;
 }
 
-export async function listAllPending(): Promise<PendingItem[]> {
+export async function listAllPending(
+  companyId: string,
+): Promise<PendingItem[]> {
   const [corrs, leaves] = await Promise.all([
-    listAllPendingCorrections(),
-    listAllPendingLeaves(),
+    listAllPendingCorrections(companyId),
+    listAllPendingLeaves(companyId),
   ]);
   const corrections: PendingItem[] = corrs.map((request) => ({
     kind: 'correction',
@@ -65,20 +67,21 @@ export async function listAllPending(): Promise<PendingItem[]> {
   );
 }
 
-export async function countAllPending(): Promise<number> {
+export async function countAllPending(companyId: string): Promise<number> {
   const [corrs, leaves] = await Promise.all([
-    listAllPendingCorrections(),
-    listAllPendingLeaves(),
+    listAllPendingCorrections(companyId),
+    listAllPendingLeaves(companyId),
   ]);
   return corrs.length + leaves.length;
 }
 
 export async function listAllRecentRequests(
+  companyId: string,
   limit: number,
 ): Promise<PendingItem[]> {
   const [corrs, leaves] = await Promise.all([
-    listAllCorrections(),
-    listAllLeaves(),
+    listAllCorrections(companyId),
+    listAllLeaves(companyId),
   ]);
   const corrections: PendingItem[] = corrs.map((request) => ({
     kind: 'correction',

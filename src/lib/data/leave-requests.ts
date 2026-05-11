@@ -93,9 +93,12 @@ export async function listLeaveRequestsForUsers(
 }
 
 export async function findLeaveRequestById(
+  companyId: string,
   id: string,
 ): Promise<MockLeaveRequest | null> {
-  const r = await prisma.leaveRequest.findUnique({ where: { id } });
+  const r = await prisma.leaveRequest.findFirst({
+    where: { id, requester: { companyId } },
+  });
   return r ? toMockLeave(r) : null;
 }
 
@@ -109,16 +112,21 @@ export async function listPendingLeavesForApprover(
   return list.map(toMockLeave);
 }
 
-export async function listAllPendingLeaves(): Promise<MockLeaveRequest[]> {
+export async function listAllPendingLeaves(
+  companyId: string,
+): Promise<MockLeaveRequest[]> {
   const list = await prisma.leaveRequest.findMany({
-    where: { status: 'submitted' },
+    where: { status: 'submitted', requester: { companyId } },
     orderBy: { submittedAt: 'asc' },
   });
   return list.map(toMockLeave);
 }
 
-export async function listAllLeaves(): Promise<MockLeaveRequest[]> {
+export async function listAllLeaves(
+  companyId: string,
+): Promise<MockLeaveRequest[]> {
   const list = await prisma.leaveRequest.findMany({
+    where: { requester: { companyId } },
     orderBy: { submittedAt: 'desc' },
   });
   return list.map(toMockLeave);
@@ -207,6 +215,7 @@ export type DecideLeaveResult =
 
 export async function decideLeave(
   input: {
+    companyId: string;
     id: string;
     deciderId: string;
     decision: LeaveDecision;
@@ -215,7 +224,9 @@ export async function decideLeave(
   db: DbClient = prisma,
 ): Promise<DecideLeaveResult> {
   return withTx(db, async (tx) => {
-    const req = await tx.leaveRequest.findUnique({ where: { id: input.id } });
+    const req = await tx.leaveRequest.findFirst({
+      where: { id: input.id, requester: { companyId: input.companyId } },
+    });
     if (!req) return { ok: false, reason: 'NOT_FOUND' };
     if (!input.isAdmin && req.currentApproverId !== input.deciderId) {
       return { ok: false, reason: 'FORBIDDEN' };

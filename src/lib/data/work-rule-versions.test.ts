@@ -2,7 +2,6 @@
 // classifyVersionStatus / isFutureVersion / isValidFromTaken のロジックを検証。
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Prisma } from '@prisma/client';
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -34,12 +33,6 @@ import {
   type MockWorkRuleVersion,
   type RuleInput,
 } from './work-rule-versions';
-
-const mkP2025 = () =>
-  new Prisma.PrismaClientKnownRequestError('not found', {
-    code: 'P2025',
-    clientVersion: 'x',
-  });
 
 const okRule: RuleInput = {
   validFrom: new Date('2099-12-01'),
@@ -144,37 +137,48 @@ describe('createWorkRuleVersion', () => {
 });
 
 describe('updateWorkRuleVersion', () => {
-  it('returns null on P2025', async () => {
-    prismaMock.workRuleVersion.update.mockRejectedValueOnce(mkP2025());
-    expect(await updateWorkRuleVersion('wrv_missing', okRule)).toBeNull();
+  it('returns null when target not in company', async () => {
+    prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce(null);
+    expect(
+      await updateWorkRuleVersion('co_default', 'wrv_missing', okRule),
+    ).toBeNull();
+    expect(prismaMock.workRuleVersion.update).not.toHaveBeenCalled();
   });
 
   it('rethrows non-P2025 errors', async () => {
+    prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce({ id: 'wrv_x' });
     prismaMock.workRuleVersion.update.mockRejectedValueOnce(
       new Error('connection lost'),
     );
-    await expect(updateWorkRuleVersion('wrv_x', okRule)).rejects.toThrow(
-      /connection/,
-    );
+    await expect(
+      updateWorkRuleVersion('co_default', 'wrv_x', okRule),
+    ).rejects.toThrow(/connection/);
   });
 });
 
 describe('deleteWorkRuleVersion', () => {
-  it('returns false on P2025', async () => {
-    prismaMock.workRuleVersion.delete.mockRejectedValueOnce(mkP2025());
-    expect(await deleteWorkRuleVersion('wrv_missing')).toBe(false);
+  it('returns false when target not in company', async () => {
+    prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce(null);
+    expect(
+      await deleteWorkRuleVersion('co_default', 'wrv_missing'),
+    ).toBe(false);
+    expect(prismaMock.workRuleVersion.delete).not.toHaveBeenCalled();
   });
 
   it('returns true on success', async () => {
+    prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce({ id: 'wrv_x' });
     prismaMock.workRuleVersion.delete.mockResolvedValueOnce({});
-    expect(await deleteWorkRuleVersion('wrv_x')).toBe(true);
+    expect(await deleteWorkRuleVersion('co_default', 'wrv_x')).toBe(true);
   });
 
   it('rethrows non-P2025 errors', async () => {
+    prismaMock.workRuleVersion.findFirst.mockResolvedValueOnce({ id: 'wrv_x' });
     prismaMock.workRuleVersion.delete.mockRejectedValueOnce(
       new Error('foreign key'),
     );
-    await expect(deleteWorkRuleVersion('wrv_x')).rejects.toThrow(/foreign key/);
+    await expect(
+      deleteWorkRuleVersion('co_default', 'wrv_x'),
+    ).rejects.toThrow(/foreign key/);
   });
 });
 

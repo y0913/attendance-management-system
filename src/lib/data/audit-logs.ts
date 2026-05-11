@@ -87,10 +87,12 @@ export interface ListAuditLogsFilters {
 }
 
 export async function listAuditLogs(
+  companyId: string,
   filters: ListAuditLogsFilters = {},
 ): Promise<MockAuditLog[]> {
   const list = await prisma.auditLog.findMany({
     where: {
+      actor: { companyId },
       ...(filters.entityType ? { entityType: filters.entityType } : {}),
       ...(filters.actorId ? { actorId: filters.actorId } : {}),
     },
@@ -102,10 +104,12 @@ export async function listAuditLogs(
 }
 
 export async function countAuditLogs(
+  companyId: string,
   filters: Omit<ListAuditLogsFilters, 'limit' | 'offset'> = {},
 ): Promise<number> {
   return prisma.auditLog.count({
     where: {
+      actor: { companyId },
       ...(filters.entityType ? { entityType: filters.entityType } : {}),
       ...(filters.actorId ? { actorId: filters.actorId } : {}),
     },

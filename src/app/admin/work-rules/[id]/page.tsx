@@ -49,7 +49,7 @@ export default async function EditWorkRulePage({
   if (session.role !== 'admin') redirect('/clock');
 
   const { id } = await params;
-  const target = await findWorkRuleVersionById(id);
+  const target = await findWorkRuleVersionById(session.companyId, id);
   if (!target) notFound();
 
   const versions = await listWorkRuleVersions(session.companyId);

@@ -86,9 +86,12 @@ export async function findActiveCorrection(
 }
 
 export async function findCorrectionById(
+  companyId: string,
   id: string,
 ): Promise<MockClockCorrectionRequest | null> {
-  const r = await prisma.clockCorrectionRequest.findUnique({ where: { id } });
+  const r = await prisma.clockCorrectionRequest.findFirst({
+    where: { id, requester: { companyId } },
+  });
   return r ? toMockCorrection(r) : null;
 }
 
@@ -113,20 +116,21 @@ export async function listPendingCorrectionsForApprover(
   return list.map(toMockCorrection);
 }
 
-export async function listAllPendingCorrections(): Promise<
-  MockClockCorrectionRequest[]
-> {
+export async function listAllPendingCorrections(
+  companyId: string,
+): Promise<MockClockCorrectionRequest[]> {
   const list = await prisma.clockCorrectionRequest.findMany({
-    where: { status: 'submitted' },
+    where: { status: 'submitted', requester: { companyId } },
     orderBy: { submittedAt: 'asc' },
   });
   return list.map(toMockCorrection);
 }
 
-export async function listAllCorrections(): Promise<
-  MockClockCorrectionRequest[]
-> {
+export async function listAllCorrections(
+  companyId: string,
+): Promise<MockClockCorrectionRequest[]> {
   const list = await prisma.clockCorrectionRequest.findMany({
+    where: { requester: { companyId } },
     orderBy: { submittedAt: 'desc' },
   });
   return list.map(toMockCorrection);
@@ -222,6 +226,7 @@ export type DecideCorrectionResult =
 
 export async function decideCorrection(
   input: {
+    companyId: string;
     id: string;
     deciderId: string;
     decision: CorrectionDecision;
@@ -230,8 +235,8 @@ export async function decideCorrection(
   db: DbClient = prisma,
 ): Promise<DecideCorrectionResult> {
   return withTx(db, async (tx) => {
-    const req = await tx.clockCorrectionRequest.findUnique({
-      where: { id: input.id },
+    const req = await tx.clockCorrectionRequest.findFirst({
+      where: { id: input.id, requester: { companyId: input.companyId } },
     });
     if (!req) return { ok: false, reason: 'NOT_FOUND' };
     if (!input.isAdmin && req.currentApproverId !== input.deciderId) {

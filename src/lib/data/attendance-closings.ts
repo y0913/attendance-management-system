@@ -163,16 +163,24 @@ export async function listClosingsForMonth(
 }
 
 export async function findClosingById(
+  companyId: string,
   id: string,
 ): Promise<MockAttendanceClosing | null> {
-  const c = await prisma.attendanceClosing.findUnique({ where: { id } });
+  const c = await prisma.attendanceClosing.findFirst({
+    where: { id, companyId },
+  });
   return c ? toMockClosing(c) : null;
 }
 
 export async function deleteClosing(
+  companyId: string,
   id: string,
   db: DbClient = prisma,
 ): Promise<MockAttendanceClosing | null> {
+  const existing = await db.attendanceClosing.findFirst({
+    where: { id, companyId },
+  });
+  if (!existing) return null;
   try {
     const removed = await db.attendanceClosing.delete({ where: { id } });
     return toMockClosing(removed);

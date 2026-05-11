@@ -1,12 +1,12 @@
 // users.ts の CRUD と P2025 例外の意図的吸収を検証。
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Prisma } from '@prisma/client';
 
 const { prismaMock } = vi.hoisted(() => ({
   prismaMock: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -43,12 +43,6 @@ const dbUser = {
   deactivatedAt: null,
   companyId: 'co_default',
 };
-
-const mkP2025 = () =>
-  new Prisma.PrismaClientKnownRequestError('not found', {
-    code: 'P2025',
-    clientVersion: 'x',
-  });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -127,34 +121,43 @@ describe('createMockUser', () => {
 
 describe('updateMockUser', () => {
   it('returns updated user on success', async () => {
+    prismaMock.user.findFirst.mockResolvedValueOnce(dbUser);
     prismaMock.user.update.mockResolvedValueOnce({ ...dbUser, name: '改名' });
-    const u = await updateMockUser('u_general', { name: '改名' });
+    const u = await updateMockUser('co_default', 'u_general', { name: '改名' });
     expect(u?.name).toBe('改名');
   });
 
-  it('returns null on P2025 (not found)', async () => {
-    prismaMock.user.update.mockRejectedValueOnce(mkP2025());
-    expect(await updateMockUser('u_missing', { name: 'x' })).toBeNull();
+  it('returns null when target not in company', async () => {
+    prismaMock.user.findFirst.mockResolvedValueOnce(null);
+    expect(
+      await updateMockUser('co_default', 'u_missing', { name: 'x' }),
+    ).toBeNull();
+    expect(prismaMock.user.update).not.toHaveBeenCalled();
   });
 
   it('rethrows non-P2025 errors (no silent swallow)', async () => {
+    prismaMock.user.findFirst.mockResolvedValueOnce(dbUser);
     prismaMock.user.update.mockRejectedValueOnce(new Error('connection lost'));
-    await expect(updateMockUser('u_general', { name: 'x' })).rejects.toThrow(
-      /connection lost/,
-    );
+    await expect(
+      updateMockUser('co_default', 'u_general', { name: 'x' }),
+    ).rejects.toThrow(/connection lost/);
   });
 });
 
 describe('setUserDeactivation', () => {
-  it('returns null on P2025', async () => {
-    prismaMock.user.update.mockRejectedValueOnce(mkP2025());
-    expect(await setUserDeactivation('u_missing', new Date())).toBeNull();
+  it('returns null when target not in company', async () => {
+    prismaMock.user.findFirst.mockResolvedValueOnce(null);
+    expect(
+      await setUserDeactivation('co_default', 'u_missing', new Date()),
+    ).toBeNull();
+    expect(prismaMock.user.update).not.toHaveBeenCalled();
   });
 
   it('rethrows other errors', async () => {
+    prismaMock.user.findFirst.mockResolvedValueOnce(dbUser);
     prismaMock.user.update.mockRejectedValueOnce(new Error('db down'));
     await expect(
-      setUserDeactivation('u_general', new Date()),
+      setUserDeactivation('co_default', 'u_general', new Date()),
     ).rejects.toThrow(/db down/);
   });
 });

@@ -61,14 +61,14 @@ export default async function AuditLogsPage({
   const actorFilter = sp.actor ?? null;
   const pageNum = Math.max(1, Number.isFinite(Number(sp.page)) ? Number(sp.page) : 1);
 
-  const totalCount = await countAuditLogs({
+  const totalCount = await countAuditLogs(session.companyId, {
     entityType: entityFilter ?? undefined,
     actorId: actorFilter ?? undefined,
   });
   const totalPages = Math.max(1, Math.ceil(totalCount / PAGE_SIZE));
   const currentPage = Math.min(pageNum, totalPages);
 
-  const logs = await listAuditLogs({
+  const logs = await listAuditLogs(session.companyId, {
     entityType: entityFilter ?? undefined,
     actorId: actorFilter ?? undefined,
     limit: PAGE_SIZE,

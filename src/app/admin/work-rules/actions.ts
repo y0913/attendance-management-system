@@ -125,7 +125,7 @@ export async function upsertWorkRuleAction(
         };
       }
       if (data.id) {
-        const target = await findWorkRuleVersionById(data.id);
+        const target = await findWorkRuleVersionById(session.companyId, data.id);
         if (!target) return { ok: false, code: 'NOT_FOUND' };
         if (!isFutureVersion(target)) {
           return {
@@ -135,7 +135,12 @@ export async function upsertWorkRuleAction(
           };
         }
         const beforeSnap = { ...target };
-        const updated = await updateWorkRuleVersion(data.id, ruleInput, tx);
+        const updated = await updateWorkRuleVersion(
+          session.companyId,
+          data.id,
+          ruleInput,
+          tx,
+        );
         await recordAuditLog(
           {
             entityType: 'work_rule_version',
@@ -202,7 +207,7 @@ export async function deleteWorkRuleAction(input: {
   const session = guard.session;
 
   try {
-    const target = await findWorkRuleVersionById(input.id);
+    const target = await findWorkRuleVersionById(session.companyId, input.id);
     if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
     if (!isFutureVersion(target)) {
       return {
@@ -216,7 +221,7 @@ export async function deleteWorkRuleAction(input: {
 
     const beforeSnap = { ...target };
     await prisma.$transaction(async (tx) => {
-      await deleteWorkRuleVersion(input.id, tx);
+      await deleteWorkRuleVersion(session.companyId, input.id, tx);
       await recordAuditLog(
         {
           entityType: 'work_rule_version',

@@ -38,7 +38,9 @@ export async function GET(
 
   const { userId } = await context.params;
   const target = await findMockUserById(userId);
-  if (!target) return new Response('Not Found', { status: 404 });
+  if (!target || target.companyId !== session.companyId) {
+    return new Response('Not Found', { status: 404 });
+  }
 
   const { searchParams } = new URL(request.url);
   const ymParam = searchParams.get('ym');

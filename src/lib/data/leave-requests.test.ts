@@ -8,6 +8,7 @@ const { prismaMock } = vi.hoisted(() => ({
     leaveRequest: {
       create: vi.fn(),
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
       findMany: vi.fn(),
     },
@@ -154,10 +155,11 @@ describe('withdrawLeave', () => {
 
 describe('decideLeave', () => {
   it('FORBIDDEN if non-admin and approver mismatches', async () => {
-    prismaMock.leaveRequest.findUnique.mockResolvedValueOnce(
+    prismaMock.leaveRequest.findFirst.mockResolvedValueOnce(
       fakeRow({ currentApproverId: 'u_other' }),
     );
     const result = await decideLeave({
+      companyId: 'co_default',
       id: 'lr_test',
       deciderId: 'u_approver',
       decision: 'approve',
@@ -168,13 +170,14 @@ describe('decideLeave', () => {
   });
 
   it('admin can decide regardless of currentApproverId', async () => {
-    prismaMock.leaveRequest.findUnique.mockResolvedValueOnce(
+    prismaMock.leaveRequest.findFirst.mockResolvedValueOnce(
       fakeRow({ currentApproverId: 'u_other' }),
     );
     prismaMock.leaveRequest.update.mockResolvedValueOnce(
       fakeRow({ status: 'approved', decidedAt: new Date() }),
     );
     const result = await decideLeave({
+      companyId: 'co_default',
       id: 'lr_test',
       deciderId: 'u_admin',
       decision: 'approve',
@@ -190,11 +193,12 @@ describe('decideLeave', () => {
       ['reject', 'rejected'],
       ['return', 'returned'],
     ] as const) {
-      prismaMock.leaveRequest.findUnique.mockResolvedValueOnce(fakeRow());
+      prismaMock.leaveRequest.findFirst.mockResolvedValueOnce(fakeRow());
       prismaMock.leaveRequest.update.mockResolvedValueOnce(
         fakeRow({ status: expected }),
       );
       await decideLeave({
+        companyId: 'co_default',
         id: 'lr_test',
         deciderId: 'u_approver',
         decision,

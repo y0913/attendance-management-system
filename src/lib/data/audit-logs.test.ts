@@ -63,35 +63,44 @@ describe('recordAuditLog', () => {
 });
 
 describe('listAuditLogs', () => {
-  it('applies entityType / actorId filter when provided', async () => {
+  it('applies companyId (via actor relation) + entityType / actorId filter', async () => {
     prismaMock.auditLog.findMany.mockResolvedValueOnce([]);
-    await listAuditLogs({ entityType: 'user', actorId: 'u_admin' });
+    await listAuditLogs('co_default', {
+      entityType: 'user',
+      actorId: 'u_admin',
+    });
     expect(prismaMock.auditLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { entityType: 'user', actorId: 'u_admin' },
+        where: {
+          actor: { companyId: 'co_default' },
+          entityType: 'user',
+          actorId: 'u_admin',
+        },
         orderBy: { createdAt: 'desc' },
       }),
     );
   });
 
-  it('omits filters when not provided', async () => {
+  it('always applies companyId even without other filters', async () => {
     prismaMock.auditLog.findMany.mockResolvedValueOnce([]);
-    await listAuditLogs();
+    await listAuditLogs('co_default');
     expect(prismaMock.auditLog.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: {} }),
+      expect.objectContaining({
+        where: { actor: { companyId: 'co_default' } },
+      }),
     );
   });
 
   it('applies take/skip only when positive', async () => {
     prismaMock.auditLog.findMany.mockResolvedValueOnce([]);
-    await listAuditLogs({ limit: 50, offset: 100 });
+    await listAuditLogs('co_default', { limit: 50, offset: 100 });
     expect(prismaMock.auditLog.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ take: 50, skip: 100 }),
     );
 
     prismaMock.auditLog.findMany.mockClear();
     prismaMock.auditLog.findMany.mockResolvedValueOnce([]);
-    await listAuditLogs({ limit: 0, offset: 0 });
+    await listAuditLogs('co_default', { limit: 0, offset: 0 });
     const arg = prismaMock.auditLog.findMany.mock.calls[0][0];
     expect(arg.take).toBeUndefined();
     expect(arg.skip).toBeUndefined();
@@ -99,12 +108,17 @@ describe('listAuditLogs', () => {
 });
 
 describe('countAuditLogs', () => {
-  it('forwards filters to count', async () => {
+  it('forwards companyId + filters to count', async () => {
     prismaMock.auditLog.count.mockResolvedValueOnce(42);
-    const n = await countAuditLogs({ entityType: 'work_rule_version' });
+    const n = await countAuditLogs('co_default', {
+      entityType: 'work_rule_version',
+    });
     expect(n).toBe(42);
     expect(prismaMock.auditLog.count).toHaveBeenCalledWith({
-      where: { entityType: 'work_rule_version' },
+      where: {
+        actor: { companyId: 'co_default' },
+        entityType: 'work_rule_version',
+      },
     });
   });
 });

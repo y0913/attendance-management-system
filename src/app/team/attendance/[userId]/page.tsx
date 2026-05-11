@@ -66,7 +66,7 @@ export default async function TeamAttendanceUserPage({
 
   const { userId } = await params;
   const target = await findMockUserById(userId);
-  if (!target) notFound();
+  if (!target || target.companyId !== session.companyId) notFound();
 
   if (!(await canViewUserAttendance(session, userId))) {
     redirect('/team/attendance');

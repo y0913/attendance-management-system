@@ -43,7 +43,9 @@ export async function closeMonthAction(input: {
 
   try {
     const target = await findMockUserById(parsed.data.userId);
-    if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
+    if (!target || target.companyId !== session.companyId) {
+      return { ok: false, error: { code: 'NOT_FOUND' } };
+    }
 
     const closing = await withRetry(() =>
       prisma.$transaction(async (tx) => {
@@ -190,7 +192,10 @@ export async function uncloseAction(input: {
   }
 
   try {
-    const target = await findClosingById(parsed.data.closingId);
+    const target = await findClosingById(
+      session.companyId,
+      parsed.data.closingId,
+    );
     if (!target) return { ok: false, error: { code: 'NOT_FOUND' } };
 
     const beforeSnap = {
@@ -204,7 +209,7 @@ export async function uncloseAction(input: {
 
     await withRetry(() =>
       prisma.$transaction(async (tx) => {
-        await deleteClosing(parsed.data.closingId, tx);
+        await deleteClosing(session.companyId, parsed.data.closingId, tx);
         await recordAuditLog(
           {
             entityType: 'attendance_closing',
