@@ -12,7 +12,7 @@ const { auth } = NextAuth(authConfig);
 // - /api/public/*: 公開 API（将来）
 // - /api/webhooks/*: 署名検証で守る webhook 受信（将来）
 // - /api/cron/*: シークレットヘッダで守る cron 起動（将来）
-const PUBLIC_EXACT_PATHS = ['/login', '/signup'];
+const PUBLIC_EXACT_PATHS = ['/', '/login', '/signup'];
 const PUBLIC_PATH_PREFIXES = [
   '/api/auth/',
   '/api/public/',
@@ -20,9 +20,15 @@ const PUBLIC_PATH_PREFIXES = [
   '/api/cron/',
 ];
 
+// /public 配下に置く静的ファイル (画像 / フォント / マニフェスト等) は
+// auth を通さず素通しする。matcher で _next 系は既に除外済みだが /public は
+// URL 上ルート直下なので、拡張子で判定する。
+const STATIC_FILE_EXTENSION = /\.(svg|png|jpg|jpeg|gif|webp|avif|woff2?|ttf|otf|ico|css|js|json|txt|map)$/i;
+
 const isPublicPath = (pathname: string): boolean =>
   PUBLIC_EXACT_PATHS.includes(pathname) ||
-  PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+  PUBLIC_PATH_PREFIXES.some((prefix) => pathname.startsWith(prefix)) ||
+  STATIC_FILE_EXTENSION.test(pathname);
 
 const isApiPath = (pathname: string): boolean => pathname.startsWith('/api/');
 
@@ -69,7 +75,7 @@ const buildCsp = (nonce: string): string =>
     // Tailwind は SSR で inline style を出すため、style に nonce 適用が難しく
     // 'unsafe-inline' を許容する。inline style は XSS のリスクが script より低い。
     `style-src 'self' 'unsafe-inline'`,
-    `img-src 'self' data: blob:`,
+    `img-src 'self' data: blob: https://cdn.simpleicons.org`,
     `font-src 'self' data:`,
     // dev の HMR は WebSocket 経由。
     `connect-src 'self'${isDev ? ' ws: wss:' : ''}`,
