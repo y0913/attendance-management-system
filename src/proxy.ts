@@ -60,8 +60,12 @@ const isDev = process.env.NODE_ENV === 'development';
 const buildCsp = (nonce: string): string =>
   [
     `default-src 'self'`,
-    // 'unsafe-eval' は Turbopack/HMR が dev で必要。本番は外す。
-    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
+    // 本番は nonce ベースで厳格化。dev は Turbopack HMR が動的 inline script を
+    // 注入する関係で 'unsafe-inline' も許可しないと HMR が壊れて全リロード loop に陥る。
+    // 'unsafe-eval' も Turbopack 内部で必要。
+    isDev
+      ? `script-src 'self' 'unsafe-inline' 'unsafe-eval'`
+      : `script-src 'self' 'nonce-${nonce}'`,
     // Tailwind は SSR で inline style を出すため、style に nonce 適用が難しく
     // 'unsafe-inline' を許容する。inline style は XSS のリスクが script より低い。
     `style-src 'self' 'unsafe-inline'`,
