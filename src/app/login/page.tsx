@@ -1,7 +1,9 @@
+import Link from 'next/link';
 import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
@@ -74,11 +76,19 @@ export default async function LoginPage({
               ))}
             </ul>
             <p className="mt-2 text-xs text-muted-foreground">
-              admin が
-              `/admin/employees` から招待した社員のみログイン可能です。
+              admin が `/admin/employees`
+              から招待した社員、または新規登録したユーザーのみログイン可能です。
             </p>
           </div>
         </CardContent>
+        <CardFooter className="flex justify-center">
+          <p className="text-sm text-muted-foreground">
+            アカウントをお持ちでない方は{' '}
+            <Link href="/signup" className="underline">
+              新規登録
+            </Link>
+          </p>
+        </CardFooter>
       </Card>
     </div>
   );

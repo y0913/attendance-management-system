@@ -12,7 +12,7 @@ const { auth } = NextAuth(authConfig);
 // - /api/public/*: 公開 API（将来）
 // - /api/webhooks/*: 署名検証で守る webhook 受信（将来）
 // - /api/cron/*: シークレットヘッダで守る cron 起動（将来）
-const PUBLIC_EXACT_PATHS = ['/login'];
+const PUBLIC_EXACT_PATHS = ['/login', '/signup'];
 const PUBLIC_PATH_PREFIXES = [
   '/api/auth/',
   '/api/public/',
@@ -71,7 +71,7 @@ export const proxy = auth((req) => {
     return applySecurityHeaders(denyOrRedirect(req, 'unauth'));
   }
 
-  if (isAuthed && pathname === '/login') {
+  if (isAuthed && (pathname === '/login' || pathname === '/signup')) {
     const url = req.nextUrl.clone();
     url.pathname = '/clock';
     return applySecurityHeaders(NextResponse.redirect(url));
