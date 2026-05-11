@@ -87,7 +87,7 @@ export default async function ReportsPage({
             <CardHeader>
               <CardTitle className="text-base">給与 CSV</CardTitle>
               <p className="text-xs text-muted-foreground">
-                全社員の月次基本情報＋勤務サマリーを CSV 出力（UTF-8 BOM 付）
+                全社員の月次基本情報＋勤務サマリーを CSV 出力
               </p>
             </CardHeader>
             <CardContent className="flex flex-col gap-3">
@@ -113,8 +113,7 @@ export default async function ReportsPage({
             </CardHeader>
             <CardContent>
               <p className="text-xs text-muted-foreground">
-                @react-pdf/renderer + Noto Sans JP（Google Fonts CDN
-                経由）で生成。初回ダウンロード時はフォント取得が走るため数秒かかります。
+                初回ダウンロード時はフォント取得が走るため数秒かかります。
               </p>
             </CardContent>
           </Card>
@@ -124,7 +123,7 @@ export default async function ReportsPage({
           <CardHeader>
             <CardTitle className="text-base">勤怠表 CSV（個別）</CardTitle>
             <p className="text-xs text-muted-foreground">
-              社員ごとの月次日次データを CSV 出力（UTF-8 BOM 付）
+              社員ごとの月次日次データを CSV 出力
             </p>
           </CardHeader>
           <CardContent>
