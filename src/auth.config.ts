@@ -5,7 +5,9 @@
 import type { NextAuthConfig } from 'next-auth';
 
 export default {
-  session: { strategy: 'jwt' },
+  // JWT 戦略では server-side で個別 session 失効ができないため、
+  // 盗難 cookie の生存窓を狭める意味で maxAge を 7 日に明示（NextAuth デフォルトは 30 日）。
+  session: { strategy: 'jwt', maxAge: 7 * 24 * 60 * 60 },
   providers: [], // 実 provider は src/auth.ts で追加
   pages: {
     signIn: '/login',

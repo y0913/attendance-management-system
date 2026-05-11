@@ -50,14 +50,38 @@ const denyOrRedirect = (
   return NextResponse.redirect(url);
 };
 
-// クリックジャッキングおよび MIME sniffing 対策のセキュリティヘッダ。
-// Server Action 自体は Next.js が Origin 検証して CSRF を弾くが、
-// iframe 埋め込み経由の clickjacking はヘッダ層で別途防ぐ必要がある。
+// リクエスト毎に nonce を発行し、Next.js が inline runtime script に
+// 自動適用できるよう `x-nonce` リクエストヘッダ経由で伝搬する。
+// Edge runtime 想定のため Web Crypto / btoa を使用。
+const generateNonce = (): string => btoa(crypto.randomUUID());
+
+const isDev = process.env.NODE_ENV === 'development';
+
+const buildCsp = (nonce: string): string =>
+  [
+    `default-src 'self'`,
+    // 'unsafe-eval' は Turbopack/HMR が dev で必要。本番は外す。
+    `script-src 'self' 'nonce-${nonce}'${isDev ? " 'unsafe-eval'" : ''}`,
+    // Tailwind は SSR で inline style を出すため、style に nonce 適用が難しく
+    // 'unsafe-inline' を許容する。inline style は XSS のリスクが script より低い。
+    `style-src 'self' 'unsafe-inline'`,
+    `img-src 'self' data: blob:`,
+    `font-src 'self' data:`,
+    // dev の HMR は WebSocket 経由。
+    `connect-src 'self'${isDev ? ' ws: wss:' : ''}`,
+    `frame-ancestors 'none'`,
+    `base-uri 'self'`,
+    `form-action 'self'`,
+    `object-src 'none'`,
+  ].join('; ');
+
+// クリックジャッキング/MIME sniffing/XSS 対策のセキュリティヘッダ。
 // すべてのレスポンス経路（next / redirect / 401 / 403）で付与する。
-const applySecurityHeaders = (res: Response): Response => {
+const applySecurityHeaders = (res: Response, nonce: string): Response => {
   res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('Content-Security-Policy', "frame-ancestors 'none'");
   res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Content-Security-Policy', buildCsp(nonce));
   return res;
 };
 
@@ -67,30 +91,40 @@ export const proxy = auth((req) => {
   const role = req.auth?.user?.role;
   const isPublic = isPublicPath(pathname);
 
+  const nonce = generateNonce();
+
   if (!isAuthed && !isPublic) {
-    return applySecurityHeaders(denyOrRedirect(req, 'unauth'));
+    return applySecurityHeaders(denyOrRedirect(req, 'unauth'), nonce);
   }
 
   if (isAuthed && (pathname === '/login' || pathname === '/signup')) {
     const url = req.nextUrl.clone();
     url.pathname = '/clock';
-    return applySecurityHeaders(NextResponse.redirect(url));
+    return applySecurityHeaders(NextResponse.redirect(url), nonce);
   }
 
   if (isAuthed) {
     if (requiresAdmin(pathname) && role !== 'admin') {
-      return applySecurityHeaders(denyOrRedirect(req, 'forbidden'));
+      return applySecurityHeaders(denyOrRedirect(req, 'forbidden'), nonce);
     }
     if (
       requiresApprover(pathname) &&
       role !== 'approver' &&
       role !== 'admin'
     ) {
-      return applySecurityHeaders(denyOrRedirect(req, 'forbidden'));
+      return applySecurityHeaders(denyOrRedirect(req, 'forbidden'), nonce);
     }
   }
 
-  return applySecurityHeaders(NextResponse.next());
+  // Next.js が自動で nonce を inline script に適用するため、
+  // request header に焼いて renderer に渡す。
+  const requestHeaders = new Headers(req.headers);
+  requestHeaders.set('x-nonce', nonce);
+
+  return applySecurityHeaders(
+    NextResponse.next({ request: { headers: requestHeaders } }),
+    nonce,
+  );
 });
 
 export const config = {
