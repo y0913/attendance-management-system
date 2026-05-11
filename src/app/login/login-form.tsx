@@ -13,8 +13,6 @@ const errorMessage = (
   switch (state.error.code) {
     case 'VALIDATION':
       return 'メールアドレスの形式が正しくありません';
-    case 'NOT_FOUND':
-      return '該当するユーザーが見つかりません';
     default:
       return 'ログインに失敗しました';
   }

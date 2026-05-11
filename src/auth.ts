@@ -168,23 +168,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user?.email) {
         const u = await prisma.user.findUnique({
           where: { email: user.email },
-          select: { id: true, email: true, name: true, role: true },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            tokenVersion: true,
+          },
         });
         if (u) {
           token.id = u.id;
           token.email = u.email;
           token.name = u.name;
           token.role = u.role;
+          token.tokenVersion = u.tokenVersion;
           token.refreshedAt = Date.now();
         }
         return token;
       }
 
-      // 既存トークン: 一定時間経過 or 明示 update() で role を再取得。
+      // 既存トークン: 一定時間経過 or 明示 update() で role/tokenVersion を再取得。
       // middleware が見る JWT クレームと DB の真実を同期させる目的。
+      // tokenVersion 不一致なら force logout（admin が bump した or 自分で全端末ログアウトした）。
       // page / server action は getMockSession 経由で常に DB 最新を読むので
       // ここの refresh は middleware 用と捉えて良い。
-      const ROLE_REFRESH_INTERVAL_MS = 5 * 60 * 1000; // 5 分
+      const ROLE_REFRESH_INTERVAL_MS = 60 * 1000; // 1 分
       const refreshedAt = token.refreshedAt ?? 0;
       const isStale = Date.now() - refreshedAt > ROLE_REFRESH_INTERVAL_MS;
       if ((trigger === 'update' || isStale) && token.id) {
@@ -196,20 +204,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             name: true,
             role: true,
             deactivatedAt: true,
+            tokenVersion: true,
           },
         });
-        if (!u || u.deactivatedAt) {
-          // 削除済 or 無効化済 → トークンを実質無効化。
+        if (
+          !u ||
+          u.deactivatedAt ||
+          u.tokenVersion !== token.tokenVersion
+        ) {
+          // 削除済 / 無効化済 / tokenVersion 不一致 → トークンを実質無効化。
           // middleware は req.auth?.user?.id が無いので未認証扱いし /login にリダイレクト。
           delete token.id;
           delete token.role;
           delete token.email;
           delete token.name;
+          delete token.tokenVersion;
           return token;
         }
         token.role = u.role;
         token.name = u.name;
         token.email = u.email;
+        token.tokenVersion = u.tokenVersion;
         token.refreshedAt = Date.now();
       }
 

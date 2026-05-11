@@ -119,6 +119,9 @@ model User {
   hiredAt        DateTime?      @map("hired_at") @db.Date
   baseSalary     Int?           @map("base_salary")
   deactivatedAt  DateTime?      @map("deactivated_at")
+  // 個別 force logout 用。bump すると当該ユーザーの既存 JWT が
+  // 次回 jwt callback refresh で version 不一致を検知し無効化される。
+  tokenVersion   Int            @default(0) @map("token_version")
   createdAt      DateTime       @default(now()) @map("created_at")
   updatedAt      DateTime       @updatedAt @map("updated_at")
 

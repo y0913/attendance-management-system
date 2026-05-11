@@ -14,6 +14,7 @@ import { getMockSession } from '@/lib/data/session';
 import { findMockUserById, listAllUsers } from '@/lib/data/users';
 import { EmployeeForm } from '../employee-form';
 import { DeactivationForm } from './deactivation-form';
+import { ForceLogoutForm } from './force-logout-form';
 
 const ROLE_LABEL: Record<string, string> = {
   admin: '管理者',
@@ -121,6 +122,17 @@ export default async function EditEmployeePage({
             />
           </CardContent>
         </Card>
+
+        {!isDeactivated && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">セッション失効</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ForceLogoutForm id={target.id} isSelf={isSelf} />
+            </CardContent>
+          </Card>
+        )}
       </main>
     </div>
   );

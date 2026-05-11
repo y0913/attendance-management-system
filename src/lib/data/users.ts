@@ -163,7 +163,32 @@ export async function setUserDeactivation(
   try {
     const user = await db.user.update({
       where: { id },
-      data: { deactivatedAt },
+      // deactivate と同時に tokenVersion を bump し、active な JWT を即無効化対象にする。
+      // 次の jwt callback refresh (最大 1 分) で session が切れる。
+      data: deactivatedAt
+        ? { deactivatedAt, tokenVersion: { increment: 1 } }
+        : { deactivatedAt },
+    });
+    return toMockUser(user);
+  } catch (e) {
+    if (isNotFoundError(e)) return null;
+    throw e;
+  }
+}
+
+// 個別 force logout。tokenVersion を bump して当該ユーザーの既存 JWT を
+// 次の refresh (最大 1 分) で無効化する。
+export async function bumpUserTokenVersion(
+  companyId: string,
+  id: string,
+  db: DbClient = prisma,
+): Promise<MockUser | null> {
+  const existing = await db.user.findFirst({ where: { id, companyId } });
+  if (!existing) return null;
+  try {
+    const user = await db.user.update({
+      where: { id },
+      data: { tokenVersion: { increment: 1 } },
     });
     return toMockUser(user);
   } catch (e) {

@@ -8,6 +8,7 @@ import { prisma } from '@/lib/db';
 import { logActionError } from '@/lib/logger';
 import { recordAuditLog } from '@/lib/data/audit-logs';
 import {
+  bumpUserTokenVersion,
   createMockUser,
   findMockUserById,
   isEmailTaken,
@@ -251,6 +252,68 @@ export async function setEmployeeDeactivationAction(input: {
       userId: session.id,
       err: e,
       extra: { targetUserId: parsed.data.id, deactivate: parsed.data.deactivate },
+    });
+    return { ok: false, error: { code: 'INTERNAL' } };
+  }
+}
+
+const ForceLogoutSchema = z.object({ id: z.string().min(1) });
+
+export async function forceLogoutUserAction(input: {
+  id: string;
+}): Promise<ActionResult<{ id: string }>> {
+  const guard = await requireAdmin();
+  if (!guard.ok) return guard.result;
+  const session = guard.session;
+
+  const parsed = ForceLogoutSchema.safeParse(input);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: { code: 'VALIDATION', details: parsed.error.flatten() },
+    };
+  }
+
+  if (parsed.data.id === session.id) {
+    return {
+      ok: false,
+      error: {
+        code: 'CONFLICT',
+        message: '自分自身を force logout することはできません',
+      },
+    };
+  }
+
+  try {
+    const target = await findMockUserById(parsed.data.id);
+    if (!target || target.companyId !== session.companyId) {
+      return { ok: false, error: { code: 'NOT_FOUND' } };
+    }
+
+    const updated = await bumpUserTokenVersion(
+      session.companyId,
+      parsed.data.id,
+    );
+    if (!updated) return { ok: false, error: { code: 'NOT_FOUND' } };
+
+    await recordAuditLog({
+      entityType: 'user',
+      entityId: parsed.data.id,
+      action: 'force_logout',
+      actorId: session.id,
+      before: null,
+      after: { targetUserId: parsed.data.id },
+    });
+
+    revalidatePath(`/admin/employees/${parsed.data.id}`);
+    revalidatePath('/admin/audit-logs');
+    return { ok: true, data: { id: parsed.data.id } };
+  } catch (e) {
+    logActionError({
+      action: 'forceLogoutUserAction',
+      userId: session.id,
+      err: e,
+      extra: { targetUserId: parsed.data.id },
     });
     return { ok: false, error: { code: 'INTERNAL' } };
   }

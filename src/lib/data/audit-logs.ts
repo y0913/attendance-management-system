@@ -18,7 +18,8 @@ export type AuditAction =
   | 'delete'
   | 'deactivate'
   | 'reactivate'
-  | 'close';
+  | 'close'
+  | 'force_logout';
 
 export interface MockAuditLog {
   id: string;
@@ -130,6 +131,7 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   deactivate: '無効化',
   reactivate: '再有効化',
   close: '締め',
+  force_logout: '強制ログアウト',
 };
 
 export const AUDIT_ACTION_BADGE: Record<AuditAction, string> = {
@@ -139,4 +141,5 @@ export const AUDIT_ACTION_BADGE: Record<AuditAction, string> = {
   deactivate: 'bg-zinc-200 text-zinc-700',
   reactivate: 'bg-amber-100 text-amber-900',
   close: 'bg-indigo-100 text-indigo-900',
+  force_logout: 'bg-purple-100 text-purple-900',
 };
