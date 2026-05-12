@@ -1,4 +1,5 @@
 import { formatInTimeZone } from 'date-fns-tz';
+import { ja } from 'date-fns/locale';
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import {
@@ -44,6 +45,7 @@ const fmtDateHeading = (jstDate: string): string => {
     new Date(`${jstDate}T00:00:00+09:00`),
     JST_TIMEZONE,
     'EEE',
+    { locale: ja },
   );
   return `${y}年${Number(m)}月${Number(d)}日（${wd}）`;
 };

@@ -1,4 +1,5 @@
 import { formatInTimeZone } from 'date-fns-tz';
+import { ja } from 'date-fns/locale';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import {
@@ -38,7 +39,7 @@ const fmtDateTime = (d: Date) =>
   formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const fmtToday = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 (EEE)');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 (EEE)', { locale: ja });
 
 interface RecentRow {
   key: string;

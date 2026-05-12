@@ -17,6 +17,7 @@ import {
 import { AppHeader } from '@/components/app-header';
 import { countPendingForApprover } from '@/lib/data/pending-approvals';
 import { ClockButtons } from './clock-buttons';
+import { LiveClock } from './live-clock';
 
 const STATE_LABEL: Record<ClockState, string> = {
   not_clocked_in: '未出勤',
@@ -33,8 +34,6 @@ const STATE_COLOR: Record<ClockState, string> = {
 };
 
 const fmt = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
-const fmtFull = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 (EEE) HH:mm');
 
 export default async function ClockPage() {
   const session = await getMockSession();
@@ -57,10 +56,11 @@ export default async function ClockPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">打刻</CardTitle>
-            <p className="text-sm text-muted-foreground">{fmtFull(new Date())}</p>
           </CardHeader>
-          <CardContent className="flex flex-col gap-8">
-            <div className="flex items-center gap-4">
+          <CardContent className="flex flex-col gap-6">
+            <LiveClock />
+
+            <div className="flex items-center justify-center gap-4">
               <span
                 className={`inline-flex items-center rounded-full px-3 py-1 text-sm font-medium ${STATE_COLOR[state]}`}
               >
