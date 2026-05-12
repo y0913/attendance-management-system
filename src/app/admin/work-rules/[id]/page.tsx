@@ -20,9 +20,9 @@ import {
 import { WorkRuleForm } from '../work-rule-form';
 import { DeleteForm } from './delete-form';
 
-const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
+const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日');
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const fmtMin = (n: number): string =>
   `${Math.floor(n / 60)}h${n % 60 > 0 ? ` ${n % 60}m` : ''}`;
@@ -144,7 +144,7 @@ export default async function EditWorkRulePage({
                   {fmtMin(target.dailyOtThresholdMin)} /{' '}
                   {fmtMin(target.weeklyOtThresholdMin)}
                 </dd>
-                <dt className="text-muted-foreground">compliance_mode</dt>
+                <dt className="text-muted-foreground">法定下限チェック</dt>
                 <dd>
                   {target.complianceMode ? (
                     <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-900">

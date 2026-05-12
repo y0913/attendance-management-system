@@ -34,7 +34,7 @@ import { findMockUserById, listAllUsers } from '@/lib/data/users';
 import { DecisionForm } from './decision-form';
 
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const dash = (s: string | null) => s ?? '-';
 

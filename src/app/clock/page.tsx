@@ -34,7 +34,7 @@ const STATE_COLOR: Record<ClockState, string> = {
 
 const fmt = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
 const fmtFull = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy/MM/dd (EEE) HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 (EEE) HH:mm');
 
 export default async function ClockPage() {
   const session = await getMockSession();

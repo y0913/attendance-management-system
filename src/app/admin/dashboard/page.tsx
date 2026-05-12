@@ -35,10 +35,10 @@ import { countClockStates } from '@/lib/data/time-clocks';
 import { listActiveUsers } from '@/lib/data/users';
 
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const fmtToday = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy/MM/dd (EEE)');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 (EEE)');
 
 interface RecentRow {
   key: string;

@@ -41,7 +41,7 @@ const fmtMonth = (ym: string) => {
 };
 
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const fmtMinutes = (n: number): string => {
   const h = Math.floor(n / 60);
@@ -116,8 +116,7 @@ export default async function ClosingsPage({
                 <p className="text-sm text-muted-foreground">
                   締め済み {closedCount} 名 ・ 未締め {notClosedCount} 名
                   <span className="ml-2 text-xs">
-                    （締めると snapshot
-                    が凍結され、過去のルール変更で集計が変わらなくなる）
+                    （締めると当月の集計が確定し、以降のルール変更でも値は変わりません）
                   </span>
                 </p>
               </div>

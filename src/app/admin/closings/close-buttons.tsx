@@ -71,7 +71,7 @@ export function UncloseButton({
     setError(null);
     if (
       !confirm(
-        `${userName} の ${yearMonth} の締めを解除します。snapshot は削除されます。よろしいですか？`,
+        `${userName} の ${yearMonth} の締めを解除します。締めデータは削除されます。よろしいですか？`,
       )
     )
       return;

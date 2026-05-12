@@ -31,8 +31,7 @@ export default async function CompanySettingsPage() {
         <div className="mb-6">
           <h1 className="text-xl font-semibold">会社設定</h1>
           <p className="text-sm text-muted-foreground">
-            会社全体に関わる基本設定。労働ルール（compliance_mode
-            含む）はバージョン単位で管理されるため、
+            会社全体に関わる基本設定。労働ルール（法定下限チェック含む）はバージョン単位で管理されるため、
             <span className="ml-1 underline-offset-4">労働ルール設定</span>
             画面で行います。
           </p>

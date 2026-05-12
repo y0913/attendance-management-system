@@ -30,7 +30,7 @@ import { listAllUsers } from '@/lib/data/users';
 import { WithdrawButton } from './withdraw-button';
 
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const dash = (s: string | null) => s ?? '-';
 

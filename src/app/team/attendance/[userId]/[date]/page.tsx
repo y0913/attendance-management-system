@@ -33,7 +33,7 @@ const isValidYm = (s: string) => /^\d{4}-(0[1-9]|1[0-2])$/.test(s);
 
 const fmtTime = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'HH:mm');
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const fmtDateHeading = (jstDate: string): string => {
   const [y, m, d] = jstDate.split('-');

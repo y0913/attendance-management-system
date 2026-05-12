@@ -43,7 +43,7 @@ const fmtMonthTitle = (ym: string) => {
 };
 
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm');
 
 const dayClass = (weekday: number): string => {
   if (weekday === 0) return 'text-rose-600';
@@ -135,7 +135,7 @@ export default async function TeamAttendanceUserPage({
                 {fmtMinutes(summary.totalWorkMinutes)}
                 {summary.isClosed && summary.closedAt && (
                   <span className="ml-2 text-xs">
-                    （{fmtDateTime(summary.closedAt)} に snapshot 凍結）
+                    （{fmtDateTime(summary.closedAt)} に締め確定）
                   </span>
                 )}
               </p>

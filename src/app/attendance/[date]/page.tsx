@@ -163,7 +163,7 @@ export default async function AttendanceDetailPage({
                     {formatInTimeZone(
                       activeCorrection.submittedAt,
                       JST_TIMEZONE,
-                      'yyyy-MM-dd HH:mm',
+                      'yyyy年MM月dd日 HH:mm',
                     )}{' '}
                     に申請
                   </span>
@@ -201,7 +201,7 @@ export default async function AttendanceDetailPage({
                 {formatInTimeZone(
                   note.updatedAt,
                   JST_TIMEZONE,
-                  'yyyy-MM-dd HH:mm',
+                  'yyyy年MM月dd日 HH:mm',
                 )}
               </p>
             )}

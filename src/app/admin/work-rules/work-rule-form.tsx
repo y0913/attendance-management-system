@@ -125,7 +125,7 @@ export function WorkRuleForm({ initial, isCreate }: Props) {
             onChange={(e) => setComplianceMode(e.target.checked)}
           />
           <Label htmlFor="wr-compliance" className="cursor-pointer">
-            compliance_mode（法定下限チェックを有効化）
+            法定下限チェックを有効化
           </Label>
         </div>
         <p className="text-xs text-muted-foreground">

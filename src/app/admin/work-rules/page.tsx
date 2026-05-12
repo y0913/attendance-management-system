@@ -18,7 +18,7 @@ import {
   type VersionStatus,
 } from '@/lib/data/work-rule-versions';
 
-const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
+const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日');
 
 const STATUS_LABEL: Record<VersionStatus, string> = {
   past: '過去',

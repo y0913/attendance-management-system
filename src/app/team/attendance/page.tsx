@@ -19,7 +19,7 @@ const ROLE_LABEL: Record<string, string> = {
   general: '一般',
 };
 
-const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
+const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日');
 
 export default async function TeamAttendancePage() {
   const session = await getMockSession();

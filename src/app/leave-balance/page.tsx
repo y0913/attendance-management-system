@@ -14,7 +14,7 @@ import { getUserLeaveBalance } from '@/lib/data/leave-grants';
 import { countPendingForApprover } from '@/lib/data/pending-approvals';
 import { getMockSession } from '@/lib/data/session';
 
-const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd');
+const fmtDate = (d: Date) => formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日');
 
 const daysUntil = (target: Date, asOf: Date): number =>
   Math.ceil((target.getTime() - asOf.getTime()) / (1000 * 60 * 60 * 24));
@@ -111,14 +111,14 @@ export default async function LeaveBalancePage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">付与履歴</CardTitle>
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-2 text-lg font-semibold">
               入社日:{' '}
               {balance.hiredAt ? fmtDate(balance.hiredAt) : '未設定'}
-              {tenure
-                ? ` ・ 勤続 ${tenure.years}年${tenure.remMonths}ヶ月`
-                : ''}
-              {' '}・ 承認済申請による消化 {balance.totalApprovedDays}{' '}
-              日（FIFOで古い付与から消化）
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {tenure ? `勤続 ${tenure.years}年${tenure.remMonths}ヶ月 ・ ` : ''}
+              承認済申請による消化 {balance.totalApprovedDays}{' '}
+              日（古い付与から先に消化）
             </p>
           </CardHeader>
           <CardContent>

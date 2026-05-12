@@ -25,7 +25,7 @@ import { getMockSession } from '@/lib/data/session';
 import { listAllUsers } from '@/lib/data/users';
 
 const fmtDateTime = (d: Date) =>
-  formatInTimeZone(d, JST_TIMEZONE, 'yyyy-MM-dd HH:mm:ss');
+  formatInTimeZone(d, JST_TIMEZONE, 'yyyy年MM月dd日 HH:mm:ss');
 
 const isEntityType = (s: string): s is AuditEntityType =>
   s === 'work_rule_version' || s === 'company' || s === 'user';
