@@ -99,7 +99,7 @@ export default async function EditEmployeePage({
                 role: target.role,
                 managerId: target.managerId,
                 employmentType: target.employmentType,
-                hiredAt: fmtDate(target.hiredAt),
+                hiredAt: target.hiredAt ? fmtDate(target.hiredAt) : '',
                 baseSalary: target.baseSalary,
               }}
               managerCandidates={managerCandidates}

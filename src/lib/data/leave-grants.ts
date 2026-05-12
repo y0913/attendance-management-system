@@ -13,7 +13,7 @@ import { findMockUserById } from './users';
 export interface UserLeaveBalance {
   userId: string;
   asOf: Date;
-  hiredAt: Date;
+  hiredAt: Date | null;
   grants: GrantWithUsage[];
   summary: BalanceSummary;
   totalApprovedDays: number;
@@ -26,6 +26,18 @@ export async function getUserLeaveBalance(
 ): Promise<UserLeaveBalance | null> {
   const user = await findMockUserById(userId);
   if (!user) return null;
+
+  if (!user.hiredAt) {
+    return {
+      userId,
+      asOf,
+      hiredAt: null,
+      grants: [],
+      summary: summarizeBalance([], asOf),
+      totalApprovedDays: 0,
+      nextGrant: null,
+    };
+  }
 
   const grants = computeLegalGrants(user.hiredAt, asOf);
   const totalApprovedDays = (await listLeaveRequests(userId))

@@ -17,7 +17,7 @@ export interface MockUser {
   role: Role;
   managerId: string | null;
   employmentType: EmploymentType;
-  hiredAt: Date;
+  hiredAt: Date | null;
   baseSalary: number | null;
   deactivatedAt: Date | null;
 }
@@ -30,7 +30,7 @@ const toMockUser = (u: User): MockUser => ({
   role: u.role,
   managerId: u.managerId,
   employmentType: u.employmentType,
-  hiredAt: u.hiredAt ?? new Date(0),
+  hiredAt: u.hiredAt,
   baseSalary: u.baseSalary,
   deactivatedAt: u.deactivatedAt,
 });

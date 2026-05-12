@@ -85,7 +85,7 @@ export default async function TeamAttendancePage() {
                           {ROLE_LABEL[u.role]}
                         </td>
                         <td className="px-3 py-3 font-mono text-xs">
-                          {fmtDate(u.hiredAt)}
+                          {u.hiredAt ? fmtDate(u.hiredAt) : '—'}
                         </td>
                         <td className="px-3 py-3 text-right">
                           <Link

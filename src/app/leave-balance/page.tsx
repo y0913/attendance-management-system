@@ -27,11 +27,15 @@ export default async function LeaveBalancePage() {
   const balance = await getUserLeaveBalance(session.id, asOf);
   if (!balance) redirect('/login');
 
-  const tenureMonths = Math.floor(
-    (asOf.getTime() - balance.hiredAt.getTime()) / (1000 * 60 * 60 * 24 * 30.44),
-  );
-  const tenureYears = Math.floor(tenureMonths / 12);
-  const tenureRemMonths = tenureMonths % 12;
+  const tenure = balance.hiredAt
+    ? (() => {
+        const months = Math.floor(
+          (asOf.getTime() - balance.hiredAt.getTime()) /
+            (1000 * 60 * 60 * 24 * 30.44),
+        );
+        return { years: Math.floor(months / 12), remMonths: months % 12 };
+      })()
+    : null;
   const pendingCount = await countPendingForApprover(session.id);
 
   return (
@@ -108,9 +112,13 @@ export default async function LeaveBalancePage() {
           <CardHeader>
             <CardTitle className="text-base">付与履歴</CardTitle>
             <p className="text-xs text-muted-foreground">
-              入社日: {fmtDate(balance.hiredAt)} ・ 勤続 {tenureYears}年
-              {tenureRemMonths}ヶ月 ・ 承認済申請による消化{' '}
-              {balance.totalApprovedDays} 日（FIFOで古い付与から消化）
+              入社日:{' '}
+              {balance.hiredAt ? fmtDate(balance.hiredAt) : '未設定'}
+              {tenure
+                ? ` ・ 勤続 ${tenure.years}年${tenure.remMonths}ヶ月`
+                : ''}
+              {' '}・ 承認済申請による消化 {balance.totalApprovedDays}{' '}
+              日（FIFOで古い付与から消化）
             </p>
           </CardHeader>
           <CardContent>
