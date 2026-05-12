@@ -1,4 +1,3 @@
-import { formatInTimeZone } from 'date-fns-tz';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -9,7 +8,6 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { JST_TIMEZONE } from '@/lib/calc/constants';
 import { AppHeader } from '@/components/app-header';
 import { getEffectiveMonthlySummariesForUsers } from '@/lib/data/attendance-closings';
 import {
